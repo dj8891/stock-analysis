@@ -182,6 +182,7 @@ public class PolygonApiService {
                             .path("day")
                             .path("o")
                             .asDouble(0);
+                    double pe = stockPrice / currentEps;
                     if ((eps < 0.0) && (peg > 12.0)) {
                         valueEvaluation = 1;
                     }
@@ -189,7 +190,7 @@ public class PolygonApiService {
                         valueEvaluation = 2;
                     }
                     if ((peg < 0) && (pe < 50.0)) {
-                        return 2;
+                        return 2.0;
                     }
                     if (((eps > 0) && (peg > 8.0))) {
                         if (peg < 10.0) {
@@ -197,7 +198,7 @@ public class PolygonApiService {
                         }
                     }
                     if ((peg < 0) && (pe > 50.0)) {
-                        return 3;
+                        return 3.0;
                     }
                     if (((eps > 0) && (peg > 5.0))) {
                         if (peg < 8.0) {
