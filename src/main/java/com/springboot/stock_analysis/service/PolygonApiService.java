@@ -171,11 +171,18 @@ public class PolygonApiService {
                 })
                 .onErrorResume(error -> Mono.just(-1.0));
         Mono<Double> pegRating = this.cagrForCompanyNumerical(symbol);
-        return Mono.zip(epsRating, pegRating)
+        Mono<Double> curEps = this.getCurrentEps(symbol);
+        return Mono.zip(epsRating, pegRating, curEps)
                 .map(tuple -> {
                     double eps = tuple.getT1();
                     double peg = tuple.getT2();
+                    double currentEps = tuple.getT3();
                     double valueEvaluation = 0.0;
+                    double stockPrice = this.getStockData(symbol).path("ticker")
+                            .path("day")
+                            .path("o")
+                            .asDouble(0);
+                    double pe = stockPrice / currentEps;
                     if ((eps < 0.0) && (peg > 12.0)) {
                         valueEvaluation = 1;
                     }
@@ -183,7 +190,7 @@ public class PolygonApiService {
                         valueEvaluation = 2;
                     }
                     if ((peg < 0) && (pe < 50.0)) {
-                        return 2;
+                        return 2.0;
                     }
                     if (((eps > 0) && (peg > 8.0))) {
                         if (peg < 10.0) {
@@ -191,7 +198,7 @@ public class PolygonApiService {
                         }
                     }
                     if ((peg < 0) && (pe > 50.0)) {
-                        return 3;
+                        return 3.0;
                     }
                     if (((eps > 0) && (peg > 5.0))) {
                         if (peg < 8.0) {
@@ -209,7 +216,6 @@ public class PolygonApiService {
                     if ((peg < 1.5) && (peg > 1.2)) {
                         valueEvaluation = 7;
                     }
-//return here later to create a 8
                     if ((peg < 1.2) && (peg > 1.0)) {
                         valueEvaluation = 9;
                     }
@@ -249,6 +255,17 @@ public class PolygonApiService {
                     }
                     return CalculatorUtils.cagr(curEps, prvEps, stockPrice, period);
                 })
+                .onErrorResume(error -> Mono.just(-1.0));
+    }
+
+    public Mono<Double> getCurrentEps(String symbol) {
+        return getRevenuesByTickerAndTimeframe(symbol, "annual").map(
+                        value -> value.get(0)
+                                .path("financials")
+                                .path("income_statement")
+                                .path("diluted_earnings_per_share")
+                                .path("value")
+                                .asDouble())
                 .onErrorResume(error -> Mono.just(-1.0));
     }
 }
