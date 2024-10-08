@@ -170,8 +170,54 @@ public class PolygonApiService {
                     return CalculatorUtils.getGrowthRate(prvEps, curEps, this.period);
                 })
                 .onErrorResume(error -> Mono.just(-1.0));
-
-        return epsRating;
+        Mono<Double> pegRating = this.cagrForCompanyNumerical(symbol);
+        return Mono.zip(epsRating, pegRating)
+                .map(tuple -> {
+                    double eps = tuple.getT1();
+                    double peg = tuple.getT2();
+                    double valueEvaluation = 0.0;
+                    if ((eps < 0.0) && (peg > 12.0)) {
+                        valueEvaluation = 1;
+                    }
+                    if (eps < 0.0 && (peg > 10.0) && (peg < 12.0)) {
+                        valueEvaluation = 2;
+                    }
+                    if ((peg < 0) && (pe < 50.0)) {
+                        return 2;
+                    }
+                    if (((eps > 0) && (peg > 8.0))) {
+                        if (peg < 10.0) {
+                            valueEvaluation = 3;
+                        }
+                    }
+                    if ((peg < 0) && (pe > 50.0)) {
+                        return 3;
+                    }
+                    if (((eps > 0) && (peg > 5.0))) {
+                        if (peg < 8.0) {
+                            valueEvaluation = 4;
+                        }
+                    }
+                    if ((eps > 0) && (peg > 2.0)) {
+                        if (peg < 5.0) {
+                            valueEvaluation = 5;
+                        }
+                    }
+                    if ((peg < 2.0) || (Double.compare(peg, 2.0) == 0)) {
+                        valueEvaluation = 6;
+                    }
+                    if ((peg < 1.5) && (peg > 1.2)) {
+                        valueEvaluation = 7;
+                    }
+//return here later to create a 8
+                    if ((peg < 1.2) && (peg > 1.0)) {
+                        valueEvaluation = 9;
+                    }
+                    if (peg < 1.0) {
+                        valueEvaluation = 10;
+                    }
+                    return valueEvaluation;
+                });
     }
 
     public Mono<Double> cagrForCompanyNumerical(String symbol) {
@@ -201,7 +247,7 @@ public class PolygonApiService {
                     if ((prvEps < 0) && (curEps > 0) && (peRatio < 50.0)) { // and PE ratio is less than 50
                         return 4.00;
                     }
-
+                    return CalculatorUtils.cagr(curEps, prvEps, stockPrice, period);
                 })
                 .onErrorResume(error -> Mono.just(-1.0));
     }

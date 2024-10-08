@@ -45,16 +45,16 @@ public class CalculatorUtils {
         return -1;
     }
 
-    public static double cagr(double currenteps, double epsfiveyearsago, double epsttm, double ttmStockPrice) {
+    public static double cagr(double currenteps, double prevEps, double ttmStockPrice, int period) {
         double value1 = 0.0;
-        if (currenteps < 0 && epsfiveyearsago < 0) {
+        if (currenteps < 0 && prevEps < 0) {
             currenteps = Math.abs(currenteps);
-            epsfiveyearsago = Math.abs(epsfiveyearsago);
-            value1 = (epsfiveyearsago / currenteps);
+            prevEps = Math.abs(prevEps);
+            value1 = (prevEps / currenteps);
         } else {
-            value1 = (currenteps / epsfiveyearsago);
+            value1 = (currenteps / prevEps);
         }
-        double z = Math.pow(value1, 1.0 / 5);
+        double z = Math.pow(value1, 1.0 / period);
         double growthRate = (z - 1.0) * 100;
         if (growthRate > 25.0) {
             growthRate = 25.0;
