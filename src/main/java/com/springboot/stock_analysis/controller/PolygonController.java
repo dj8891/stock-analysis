@@ -11,6 +11,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/polygon")
@@ -27,7 +28,7 @@ public class PolygonController {
     }
 
     @GetMapping("/dow")
-    public Mono<JsonNode> getDji() {
-        return polygonApiService.getAllStockData();
+    public List<String> getDji() {
+        return polygonApiService.getTickersList();
     }
 }

@@ -62,4 +62,6 @@ public class CalculatorUtils {
         double pe = (ttmStockPrice / currenteps);
         return pe / growthRate;
     }
+
+//    public static double overallGrowth(stockPrices, revenues)
 }
