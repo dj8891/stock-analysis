@@ -12,8 +12,16 @@ public class Stocks {
 
     private String ticker;
     private String year;
+
+    public Stocks() {}
+
+    @Column(nullable = true)
     private double stock;
+
+    @Column(nullable = true)
     private double eps;
+
+    @Column(nullable = true)
     private double revenue;
 
     public Long getId() {

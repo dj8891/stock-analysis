@@ -1,4 +1,5 @@
 package com.springboot.stock_analysis.utils;
+
 import java.util.Collections;
 import java.io.BufferedReader;
 import java.io.File;
@@ -7,6 +8,10 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.Comparator;
 import java.util.List;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class CalculatorUtils {
     public static double getGrowthRate(double startPrice, double endPrice, int period) {
@@ -61,5 +66,13 @@ public class CalculatorUtils {
         }
         double pe = (ttmStockPrice / currenteps);
         return pe / growthRate;
+    }
+
+    public static String convertTimestampToDate(long unixMsec) {
+        ZonedDateTime dateTime = Instant.ofEpochMilli(unixMsec)
+                .atZone(ZoneId.of("UTC"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        return String.valueOf(dateTime.getYear());
     }
 }
