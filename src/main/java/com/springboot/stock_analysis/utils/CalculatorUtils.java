@@ -67,7 +67,7 @@ public class CalculatorUtils {
         double pe = (ttmStockPrice / currenteps);
         return pe / growthRate;
     }
-
+  
     public static String convertTimestampToDate(long unixMsec) {
         ZonedDateTime dateTime = Instant.ofEpochMilli(unixMsec)
                 .atZone(ZoneId.of("UTC"));

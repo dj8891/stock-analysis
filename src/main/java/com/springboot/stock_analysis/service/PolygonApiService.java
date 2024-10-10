@@ -2,12 +2,19 @@ package com.springboot.stock_analysis.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.springboot.stock_analysis.dto.RatedStockDTO;
+import com.springboot.stock_analysis.model.Stocks;
+import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PolygonApiService {
@@ -17,11 +24,159 @@ public class PolygonApiService {
     int period;
 
     private final WebClient webClient;
-
-    public PolygonApiService(WebClient webClient) {
+    private final StocksRepository stocksRepository;
+    public PolygonApiService(WebClient webClient, StocksRepository stocksRepository) {
         this.webClient = webClient;
+        this.stocksRepository = stocksRepository;
     }
 
+    /**
+     * get Distinct Tickers from database
+     * @return tickers' array by distinct
+     */
+    public List<String> getTickersList() {
+        return this.stocksRepository.findDistinctByTicker();
+    }
+
+    /**
+     * get Sorted stocks ranking with tickers
+     * @return Array of stocks sorted
+     */
+    public List<RatedStockDTO> getRatedStocks() {
+        List<String> tickerList = this.getTickersList();
+        int lastYear = LocalDate.now().getYear();
+        int startYear = lastYear - period + 1;
+        for(String ticker: tickerList) {
+            double stockGrowth = this.overallGrowth(ticker, startYear, lastYear);
+        }
+    }
+
+    /**
+     *
+     * @param ticker: ticker
+     * @param startYear: start year being evalueated
+     * @param lastYear: last year being evaluated
+     *
+     * @return overall growth rating
+     */
+    public double overallGrowth(String ticker, int startYear, int lastYear) {
+        int growthRating = this.growthEvaluation(ticker, startYear, lastYear);
+        int valueRating = this.valueCriteria(ticker, startYear, lastYear);
+        int performanceRating = this.performanceEvaluation();
+        return 1.0;
+    }
+
+    /**
+     * get company growthEvaluation
+     * @param ticker : ticker
+     * @param startYear: start Year
+     * @param lastYear: last Year
+     * @return :
+     */
+    private Integer growthEvaluation(String ticker, int startYear, int lastYear) {
+        int growthEvaluating = 1;
+        Stocks ttmData = this.stocksRepository.findByTickerAndYear(ticker, "ttm").orElse(new Stocks());
+        double revTTM = ttmData.getRevenue();
+        Stocks prvData = this.stocksRepository.getPrevYearStock(ticker).orElse(new Stocks());
+        double revP = prvData.getRevenue();
+        double revenueGrowth = this.companyGrowthRate(ticker, startYear, lastYear, true);
+        double epsGrowth = this.companyGrowthRate(ticker, startYear, lastYear, false);
+
+        if ((revenueGrowth < 0.0)) {
+            growthEvaluating = 2;
+        }
+        if ((revenueGrowth == 0.0) && (epsGrowth == 0.0)) {
+            growthEvaluating = 3;
+        }
+        if (((revenueGrowth < 10.0) && (revenueGrowth > 0.0))) {
+            growthEvaluating = 4;
+        }
+        if (revenueGrowth > 10.0 && (revTTM < (1.2 * revP))) {
+            growthEvaluating = 5;
+        }
+        if ((revenueGrowth > 10.0) && (revenueGrowth < 15.0)) {
+            growthEvaluating = 6;
+        }
+        if ((revenueGrowth > 15.0) && (revenueGrowth < 20.0)) {
+            if (epsGrowth > 15.0) {
+                growthEvaluating = 8;
+            } else {
+                growthEvaluating = 7;
+            }
+        }
+        if (revenueGrowth > 20.0) {
+            growthEvaluating = 9;
+        }
+        if ((revenueGrowth > 20.0) && (epsGrowth > 20.0)) {
+            growthEvaluating = 10;
+        }
+        return growthEvaluating;
+    }
+
+    /**
+     * @param ticker
+     * @param startYear
+     * @param lastYear
+     * @param isRevenue : true: get revenue rate, else, eps rate
+     * @return get growth rate per year
+     */
+    private Double companyGrowthRate(String ticker, int startYear, int lastYear, boolean isRevenue) {
+        Stocks startStocks = this.stocksRepository.findByTickerAndYear(ticker, String.valueOf(startYear)).orElse(new Stocks());
+        Stocks ttmData = this.stocksRepository.findByTickerAndYear(ticker, "ttm").orElse(new Stocks());
+        Stocks lastStocks = this.stocksRepository.findByTickerAndYear(ticker, String.valueOf(lastYear)).orElse(ttmData);
+        double lastData = isRevenue ? lastStocks.getRevenue() : lastStocks.getEps();
+        double firstData = isRevenue ? startStocks.getRevenue() : startStocks.getEps();
+        double z = Math.pow(lastData / firstData, 1.0 / (lastYear - startYear + 1));
+        return (z - 1.0) * 100;
+    }
+
+    public Integer valueCriteria(String ticker, int startYear, int lastYear) {
+        Stocks startStocks = this.stocksRepository.findByTickerAndYear(ticker, String.valueOf(startYear)).orElse(new Stocks());
+        Stocks ttmData = this.stocksRepository.findByTickerAndYear(ticker, "ttm").orElse(new Stocks());
+        Stocks lastStocks = this.stocksRepository.findByTickerAndYear(ticker, String.valueOf(lastYear)).orElse(ttmData);
+        double stockPrice = lastStocks.getStock();
+        double epsPrice = lastStocks.getEps();
+        double pe = stockPrice / epsPrice;
+        double epsGrowth = this.companyGrowthRate(ticker, startYear, lastYear, false);
+        double peg = this.cagrForCompanyNumerical(startStocks, lastStocks, ticker, startYear, lastYear);
+    }
+
+    public Double cagrForCompanyNumerical(Stocks startStock, Stocks lastStock, String ticker, int startYear, int lastYear) {
+        double stockPrice = lastStock.getStock();
+        double startEpsValue = startStock.getEps();
+        double lastEpsValue = lastStock.getEps();
+        double peRatio = stockPrice / lastEpsValue;
+        if ((startEpsValue > 0) && (lastEpsValue < 0)) {
+            return 1.00;
+        }
+        if ((startEpsValue < 0) && (lastEpsValue > 0) && (peRatio < 50.0)) { // and PE ratio is less than 50
+            return 4.00;
+        }
+        Stocks ttmData = this.stocksRepository.findByTickerAndYear(ticker, "ttm").orElse(new Stocks());
+        double epsTtm = ttmData.getEps();
+        return this.cagr(lastEpsValue, startEpsValue, epsTtm, stockPrice);
+    }
+
+    public Double cagr(double lastEpsValue, double startEpsValue, double epsTtm, double stockPrice) {
+        double value1 = 0.0;
+        if (lastEpsValue < 0 && startEpsValue < 0) {
+            double currentEps = Math.abs(lastEpsValue);
+            double prevEps = Math.abs(startEpsValue);
+            value1 = (prevEps / currentEps);
+        } else {
+            value1 = (lastEpsValue / startEpsValue);
+        }
+        double z = Math.pow(value1, 1.0 / 5);
+        double growthRate = (z - 1.0) * 100;
+        if (growthRate > 25.0) {
+            growthRate = 25.0;
+        }
+        double pe = (stockPrice / lastEpsValue);
+        return pe / growthRate;
+    }
+    public Integer performanceEvaluation() {
+
+    }
     public Mono<String> getDowData(String stockSymbol) {
         return webClient.get()
                 .uri("/v3/snapshot/indices?ticker.any_of=I:DJI&limit=10&apiKey={apiKey}", apiKey)

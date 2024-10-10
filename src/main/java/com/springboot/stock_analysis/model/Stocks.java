@@ -24,6 +24,12 @@ public class Stocks {
     @Column(nullable = true)
     private double revenue;
 
+    public Stocks() {
+        this.stock = 0;
+        this.eps = 0;
+        this.revenue = 0;
+    }
+
     public Long getId() {
         return id;
     }
