@@ -10,10 +10,19 @@ public class Stocks {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "ticker", nullable = false)
     private String ticker;
+
+    @Column(name = "year")
     private String year;
+
+    @Column(name = "stock")
     private double stock;
+
+    @Column(name = "eps")
     private double eps;
+
+    @Column(name = "revenue")
     private double revenue;
 
     public Stocks() {

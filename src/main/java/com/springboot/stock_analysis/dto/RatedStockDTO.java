@@ -4,6 +4,11 @@ public class RatedStockDTO {
     private String ticker;
     private double rating;
 
+    public RatedStockDTO(String ticker, double rating) {
+        this.ticker = ticker;
+        this.rating = rating;
+    }
+
     public String getTicker() {
         return ticker;
     }

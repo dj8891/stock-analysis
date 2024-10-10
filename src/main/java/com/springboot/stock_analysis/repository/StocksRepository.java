@@ -18,4 +18,5 @@ public interface StocksRepository extends JpaRepository<Stocks, Long> {
 
     @Query("SELECT s FROM Stocks s WHERE s.ticker = :ticker AND s.year != 'ttm' ORDER BY s.year DESC")
     Optional<Stocks> getPrevYearStock(@Param("ticker") String ticker);
+
 }
