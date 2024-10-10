@@ -154,9 +154,6 @@ public class ScheduledService {
     }
 
     public void asyncGetOneStockInfo(String ticker) {
-        if (!stocksRepository.findByTickerAndYearNot(ticker, "TTM").isEmpty())
-            return;
-
         CompletableFuture.runAsync(() -> {
             try {
                 String response = webClient.get()
@@ -183,9 +180,6 @@ public class ScheduledService {
     }
 
     public void asyncGetOneFinancialInfo(String ticker, boolean isTTM) {
-        if (!isTTM && !stocksRepository.findByTickerAndYearNot(ticker, "TTM").isEmpty())
-            return;
-
         CompletableFuture.runAsync(() -> {
             try {
                 String tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=annual&limit=4&apiKey={apiKey}";
