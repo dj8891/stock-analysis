@@ -5,7 +5,6 @@ import com.springboot.stock_analysis.model.Stocks;
 import com.springboot.stock_analysis.model.WatchList;
 import com.springboot.stock_analysis.repository.WatchListRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
-import org.apache.logging.log4j.ThreadContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -13,7 +12,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service

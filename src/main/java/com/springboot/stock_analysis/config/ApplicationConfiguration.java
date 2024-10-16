@@ -13,6 +13,11 @@ public class ApplicationConfiguration {
 
     @Bean
     public WebClient webClient(WebClient.Builder builder) {
-        return builder.baseUrl(baseUrl).build();
+        return builder
+                .baseUrl(baseUrl)
+                .codecs(configurer -> configurer
+                        .defaultCodecs()
+                        .maxInMemorySize(128 * 1024 * 1024))
+                .build();
     }
 }

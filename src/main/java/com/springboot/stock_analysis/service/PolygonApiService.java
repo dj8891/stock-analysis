@@ -48,8 +48,6 @@ public class PolygonApiService {
                     ticker = node.path("ticker").asText();
                     stocks.add(new Stocks(ticker, year, stockPrice, eps, revenue));
                 }
-//                Stocks[] stocks = objectMapper.treeToValue(jsonNode, Stocks[].class);
-
                 this.allStocks.put(ticker, stocks);
             } catch (JsonProcessingException e) {
                 System.out.println(e.getMessage());

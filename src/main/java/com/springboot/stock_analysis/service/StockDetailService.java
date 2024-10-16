@@ -1,13 +1,9 @@
 package com.springboot.stock_analysis.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.springboot.stock_analysis.model.WatchList;
 import com.springboot.stock_analysis.repository.WatchListRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
-
-import java.util.Optional;
 
 @Service
 public class StockDetailService {

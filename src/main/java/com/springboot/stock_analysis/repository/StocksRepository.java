@@ -16,7 +16,7 @@ public interface StocksRepository extends JpaRepository<Stocks, Long> {
 
     Optional<Stocks> findByTickerAndYear(String ticker, String year);
 
-    @Query("SELECT s FROM Stocks s WHERE s.ticker = :ticker AND s.year != 'ttm' ORDER BY s.year DESC LIMIT 1")
+    @Query("SELECT s FROM Stocks s WHERE s.ticker = :ticker AND s.year != 'ttm' ORDER BY s.year DESC")
     Optional<Stocks> getPrevYearStock(@Param("ticker") String ticker);
 
     @Query("SELECT " +
@@ -25,4 +25,6 @@ public interface StocksRepository extends JpaRepository<Stocks, Long> {
     List<String> findGroupedStocks();
 
     List<Stocks> findByTicker(String ticker);
+
+    List<Stocks> findByTickerAndYearNot(String ticker, String year);
 }

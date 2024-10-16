@@ -1,16 +1,15 @@
 package com.springboot.stock_analysis.utils;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.springboot.stock_analysis.model.Stocks;
-import org.springframework.cglib.core.Local;
-import org.springframework.http.HttpMethod;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 import java.text.DecimalFormat;
 import java.time.*;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 public class CalculatorUtils {
@@ -219,6 +218,13 @@ public class CalculatorUtils {
         return pe / growthRate;
     }
 
+    public static String convertTimestampToDate(long unixMsec) {
+        ZonedDateTime dateTime = Instant.ofEpochMilli(unixMsec)
+                .atZone(ZoneId.of("UTC"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        return String.valueOf(dateTime.getYear());
+    }
     public static Integer performanceEvaluation(Map<String, List<Stocks>> allStocks, String ticker, int firstYear, int lastYear) {
         double stockGrowth = companyGrowthRate(allStocks, ticker, firstYear, lastYear, "stock");
         double spyGrowth = companyGrowthRate(allStocks, "SPY", firstYear, lastYear, "stock");

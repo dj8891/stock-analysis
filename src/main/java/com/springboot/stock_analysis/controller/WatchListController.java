@@ -2,7 +2,6 @@ package com.springboot.stock_analysis.controller;
 
 import com.springboot.stock_analysis.model.WatchList;
 import com.springboot.stock_analysis.service.WatchListService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
