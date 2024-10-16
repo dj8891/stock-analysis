@@ -1,6 +1,7 @@
 package com.springboot.stock_analysis.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.springboot.stock_analysis.dto.RatedStockDTO;
 import com.springboot.stock_analysis.model.Stocks;
 import com.springboot.stock_analysis.model.WatchList;
 import com.springboot.stock_analysis.repository.WatchListRepository;
@@ -58,6 +59,12 @@ public class WatchListService {
                 totalPrice += companyGrowthRate;
                 returnVal.add(tmpRtn);
             }
+            returnVal.sort(new Comparator<Map<String, String>>() {
+                @Override
+                public int compare(Map<String, String> o1, Map<String, String> o2) {
+                    return Double.compare(Double.parseDouble(o2.get("\"stockPrice\"")), Double.parseDouble(o1.get("\"stockPrice\"")));
+                }
+            });
             Map<String, String> returnValue = new HashMap<>();
             returnValue.put("watchListStock", returnVal.toString());
             returnValue.put("annualGrowth", String.valueOf(totalPrice / watchLists.size()));
