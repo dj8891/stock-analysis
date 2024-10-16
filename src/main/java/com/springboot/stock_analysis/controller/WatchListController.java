@@ -2,6 +2,7 @@ package com.springboot.stock_analysis.controller;
 
 import com.springboot.stock_analysis.model.WatchList;
 import com.springboot.stock_analysis.service.WatchListService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
@@ -27,12 +28,24 @@ public class WatchListController {
 
     @GetMapping("/data")
     public Mono<ResponseEntity<?>> getAllData() {
-        return this.watchListService.getALlData()
-                .map(ResponseEntity::ok);
+        if (this.watchListService.getALlData() != null) {
+            return this.watchListService.getALlData().map(ResponseEntity::ok);
+        }
+        else {
+            return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database Error"));
+        }
+    }
+    @GetMapping("/news")
+    public ResponseEntity<?> getNewsData() {
+        if(this.watchListService.getNewsData() != null) {
+            return ResponseEntity.ok(this.watchListService.getNewsData());
+        } else {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Database Error");
+        }
     }
 
-    @GetMapping("/news")
-    public ResponseEntity<List<Map<String, String>>> getNewsData() {
-        return ResponseEntity.ok(this.watchListService.getNewsData());
+    @GetMapping("/tickers")
+    public ResponseEntity<List<WatchList>> getTickerList() {
+        return ResponseEntity.ok(this.watchListService.getTickerList());
     }
 }

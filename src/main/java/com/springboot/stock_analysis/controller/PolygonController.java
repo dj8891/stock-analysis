@@ -21,8 +21,9 @@ public class PolygonController {
     }
 
     @GetMapping("/rated-stock")
-    public ResponseEntity<List<RatedStockDTO>> getRatedStocks() {
-       return ResponseEntity.ok(polygonApiService.getRatedStocks());
+    public ResponseEntity<?> getRatedStocks() {
+       if(polygonApiService.getRatedStocks() != null) return ResponseEntity.ok(polygonApiService.getRatedStocks());
+       else return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database Error");
     }
 
     @GetMapping("/market-summary")
@@ -33,10 +34,10 @@ public class PolygonController {
 
     @GetMapping("/best-performance")
     public ResponseEntity<?> getPerformanceList() {
-        try {
+        if(polygonApiService.getPerformanceList() != null) {
             return ResponseEntity.ok(polygonApiService.getPerformanceList());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database error");
         }
     }
 

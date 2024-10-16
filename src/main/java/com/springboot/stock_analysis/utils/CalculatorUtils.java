@@ -28,21 +28,26 @@ public class CalculatorUtils {
 
     public static Stocks findStockByTickerAndYear(Map<String, List<Stocks>> data, String ticker, String year) {
         List<Stocks> dataList = data.get(ticker);
-        for(Stocks stockData: dataList) {
-            if(stockData.getYear().equals(year)) return stockData;
+        if(dataList != null) {
+            for(Stocks stockData: dataList) {
+                if(stockData.getYear().equals(year)) return stockData;
+            }
         }
         return new Stocks();
     }
 
     public static Stocks findLastStockByTicker(Map<String, List<Stocks>> data, String ticker) {
         List<Stocks> dataList = data.get(ticker);
-        Map<Integer, Stocks> maxStocks = new HashMap<>();
-        for(Stocks row: dataList) {
-            if(!row.getYear().equals("TTM")) {
-                maxStocks.put(Integer.valueOf(row.getYear()), row);
+        if(dataList != null) {
+            Map<Integer, Stocks> maxStocks = new HashMap<>();
+            for(Stocks row: dataList) {
+                if(!row.getYear().equals("TTM")) {
+                    maxStocks.put(Integer.valueOf(row.getYear()), row);
+                }
             }
+            if(!maxStocks.isEmpty()) return Collections.max(maxStocks.entrySet(), Map.Entry.comparingByKey()).getValue();
+            else return new Stocks();
         }
-        if(!maxStocks.isEmpty()) return Collections.max(maxStocks.entrySet(), Map.Entry.comparingByKey()).getValue();
         else return new Stocks();
     }
 

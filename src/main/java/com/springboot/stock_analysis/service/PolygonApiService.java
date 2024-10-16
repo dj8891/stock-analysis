@@ -70,23 +70,27 @@ public class PolygonApiService {
         int lastYear = LocalDate.now().getYear();
         int startYear = lastYear - period;
         List<RatedStockDTO> ratedStocks = new ArrayList<RatedStockDTO>();
-        for(String ticker: this.allTickers) {
-            double stockGrowth = CalculatorUtils.overallGrowth(this.allStocks, ticker, startYear, lastYear);
-            if(Double.isNaN(stockGrowth) || Double.isInfinite(stockGrowth)) continue;;
-            RatedStockDTO ratedStockDTO = new RatedStockDTO(ticker, stockGrowth);
-            ratedStocks.add(ratedStockDTO);
-        }
-        ratedStocks.sort(new Comparator<RatedStockDTO>() {
-            @Override
-            public int compare(RatedStockDTO o1, RatedStockDTO o2) {
-                return Double.compare(o2.getRating(), o1.getRating());
+        if(!this.allStocks.isEmpty()) {
+            for(String ticker: this.allTickers) {
+                double stockGrowth = CalculatorUtils.overallGrowth(this.allStocks, ticker, startYear, lastYear);
+                if(Double.isNaN(stockGrowth) || Double.isInfinite(stockGrowth)) continue;;
+                RatedStockDTO ratedStockDTO = new RatedStockDTO(ticker, stockGrowth);
+                ratedStocks.add(ratedStockDTO);
             }
-        });
-        List<RatedStockDTO> rtnList = new ArrayList<>();
-        for(int i = 0; i < 30; i++) {
-            rtnList.add(ratedStocks.get(i));
+            ratedStocks.sort(new Comparator<RatedStockDTO>() {
+                @Override
+                public int compare(RatedStockDTO o1, RatedStockDTO o2) {
+                    return Double.compare(o2.getRating(), o1.getRating());
+                }
+            });
+            List<RatedStockDTO> rtnList = new ArrayList<>();
+            for(int i = 0; i < ratedStocks.size(); i++) {
+                if(i == 30) break;
+                rtnList.add(ratedStocks.get(i));
+            }
+            return rtnList;
         }
-        return rtnList;
+        return null;
     }
 
     public Mono<Map<String, Double>> getAllETFData() {
@@ -110,23 +114,26 @@ public class PolygonApiService {
         int curYear = LocalDate.now().getYear();
         int lastYear = curYear - 1;
         List<PerformanceDTO> performanceList = new ArrayList<>();
-        for(String ticker: this.allTickers) {
-            double growth = CalculatorUtils.companyGrowthRate(this.allStocks, ticker, lastYear, curYear, "stock");
-            if(Double.isNaN(growth) || Double.isInfinite(growth)) continue;
-            PerformanceDTO performanceDTO = new PerformanceDTO(ticker, growth);
-            performanceList.add(performanceDTO);
-        }
-        performanceList.sort(new Comparator<PerformanceDTO>() {
-            @Override
-            public int compare(PerformanceDTO o1, PerformanceDTO o2) {
-                return Double.compare(o2.getGrowth(), o1.getGrowth());
+        if(!this.allStocks.isEmpty()) {
+            for(String ticker: this.allTickers) {
+                double growth = CalculatorUtils.companyGrowthRate(this.allStocks, ticker, lastYear, curYear, "stock");
+                if(Double.isNaN(growth) || Double.isInfinite(growth)) continue;
+                PerformanceDTO performanceDTO = new PerformanceDTO(ticker, growth);
+                performanceList.add(performanceDTO);
             }
-        });
-        List<PerformanceDTO> rtnList = new ArrayList<>();
-        for(int i = 0; i < 30; i++) {
-            rtnList.add(performanceList.get(i));
+            performanceList.sort(new Comparator<PerformanceDTO>() {
+                @Override
+                public int compare(PerformanceDTO o1, PerformanceDTO o2) {
+                    return Double.compare(o2.getGrowth(), o1.getGrowth());
+                }
+            });
+            List<PerformanceDTO> rtnList = new ArrayList<>();
+            for(int i = 0; i < 30; i++) {
+                rtnList.add(performanceList.get(i));
+            }
+            return rtnList;
         }
-        return rtnList;
+        return null;
     }
 
     public Mono<List<Map<String, String>>> getNews(String tickers) {

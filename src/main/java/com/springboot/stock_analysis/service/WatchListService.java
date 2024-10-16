@@ -92,16 +92,18 @@ public class WatchListService {
         List<WatchList> watchLists = this.watchListRepository.findAll();
         List<Map<String, String>> returnList = new ArrayList<>();
         if (!watchLists.isEmpty()) {
-            StringBuilder tickerListStr = new StringBuilder();
-            List<Map<String, String>> returnVal = new ArrayList<>();
-            double totalPrice = 0.0;
             for (WatchList watchList : watchLists) {
                 List<Map<String, String>> newsList = this.polygonApiService.getNews(watchList.getTicker()).block();
                 if (newsList != null)
                     returnList = Stream.concat(returnList.stream(), newsList.stream())
                             .toList();
             }
+            return returnList;
         }
-        return returnList;
+        return null;
+    }
+
+    public List<WatchList> getTickerList() {
+        return this.watchListRepository.findAll();
     }
 }
