@@ -225,7 +225,7 @@ public class ScheduledService {
 
                     addStock(ticker, "TTM", allTickers.get(i).path("day").path("vw").asDouble());
 
-                    if (i > 0 && i % 5 == 0) Thread.sleep(500);
+                    if (i > 0 && i % 50 == 0) Thread.sleep(500);
                 }
 
                 System.out.println("LOG: Getting Stock TTM Completed!");
@@ -236,7 +236,7 @@ public class ScheduledService {
                     asyncGetOneFinancialInfo(ticker, false);
                     asyncGetOneFinancialInfo(ticker, true);
 
-                    if (i > 0 && i % 5 == 0) Thread.sleep(5000);
+                    if (i > 0 && i % 50 == 0) Thread.sleep(5000);
                 }
 
                 System.out.println("LOG: Getting Financial Info Completed!");
@@ -246,7 +246,7 @@ public class ScheduledService {
 
                     asyncGetOneStockInfo(ticker);
 
-                    if (i > 0 && i % 5 == 0) Thread.sleep(5000);
+                    if (i > 0 && i % 50 == 0) Thread.sleep(5000);
                 }
 
                 System.out.println("LOG: Getting info completed!");

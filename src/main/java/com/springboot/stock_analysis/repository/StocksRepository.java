@@ -1,6 +1,7 @@
 package com.springboot.stock_analysis.repository;
 
 import com.springboot.stock_analysis.model.Stocks;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
+@Transactional
 public interface StocksRepository extends JpaRepository<Stocks, Long> {
     @Query("SELECT DISTINCT s.ticker FROM Stocks s")
     public List<String> findDistinctByTicker();
