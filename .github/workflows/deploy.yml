@@ -22,8 +22,16 @@ jobs:
           java-version: "23"
           distribution: "temurin"
 
+      - name: Check Java Version
+        run: java -version
+
+      - name: Check Maven Version
+        run: mvn -v
+
       - name: Build the Project
         run: mvn clean install
 
       - name: Deploy the App
-        run: sudo cp target/stock_analysis-0.0.1-SNAPSHOT.jar /path/to/deployment/location && sudo systemctl restart stock_analysis.service
+        run: |
+          sudo cp target/stock_analysis-0.0.1-SNAPSHOT.jar /path/to/deployment/location
+          sudo systemctl restart stock_analysis.service
