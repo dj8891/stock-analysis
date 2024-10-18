@@ -33,5 +33,5 @@ jobs:
 
       - name: Deploy the App
         run: |
-          sudo cp target/stock_analysis-0.0.1-SNAPSHOT.jar /path/to/deployment/location
+          sudo cp target/stock_analysis-0.0.1-SNAPSHOT.jar /home/mage/actions-runner/_work
           sudo systemctl restart stock_analysis.service
