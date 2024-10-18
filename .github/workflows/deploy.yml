@@ -32,6 +32,4 @@ jobs:
         run: mvn clean install
 
       - name: Deploy the App
-        run: |
-          sudo cp target/stock_analysis-0.0.1-SNAPSHOT.jar /home/mage/actions-runner/_work
-          sudo systemctl restart stock_analysis.service
+        run: sudo java -jar target/stock_analysis-0.0.1-SNAPSHOT.jar
