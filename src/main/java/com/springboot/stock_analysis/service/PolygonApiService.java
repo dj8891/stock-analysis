@@ -116,6 +116,8 @@ public class PolygonApiService {
         List<PerformanceDTO> performanceList = new ArrayList<>();
         if(!this.allStocks.isEmpty()) {
             for(String ticker: this.allTickers) {
+                Stocks ttmStock = CalculatorUtils.findStockByTickerAndYear(this.allStocks, ticker, "TTM");
+                if(ttmStock.getStock() < 10) continue;
                 double growth = CalculatorUtils.companyGrowthRate(this.allStocks, ticker, lastYear, curYear, "stock");
                 if(Double.isNaN(growth) || Double.isInfinite(growth)) continue;
                 PerformanceDTO performanceDTO = new PerformanceDTO(ticker, growth);
@@ -128,7 +130,8 @@ public class PolygonApiService {
                 }
             });
             List<PerformanceDTO> rtnList = new ArrayList<>();
-            for(int i = 0; i < 30; i++) {
+            for(int i = 0; i < performanceList.size(); i++) {
+                if( i == 30 ) break;
                 rtnList.add(performanceList.get(i));
             }
             return rtnList;
@@ -274,46 +277,25 @@ public class PolygonApiService {
                 });
     }
 
-    public Mono<Map<String, Double>> getChartData(String ticker) {
+    public Mono<JsonNode> getChartData(String ticker, String date) {
         LocalDate curDate = LocalDate.now();
-        LocalDate fiveYearsAgoDate = curDate.minusYears(5);
+        LocalDate destDate = switch (date) {
+            case "1-D" -> curDate.minusDays(1);
+            case "5-D" -> curDate.minusDays(5);
+            case "1-M" -> curDate.minusMonths(1);
+            case "6-M" -> curDate.minusMonths(6);
+            case "YTD" -> curDate.withDayOfYear(1);
+            case "1-Y" -> curDate.minusYears(1);
+            case "5-Y" -> curDate.minusYears(5);
+            default -> LocalDate.of(2000, 1, 1);
+        };
+
         return webClient.get()
-                .uri("/v2/aggs/ticker/{ticker}/range/1/day/{from}/{to}?sort=desc&apiKey={apiKey}", ticker, fiveYearsAgoDate, curDate, apiKey)
+                .uri("/v2/aggs/ticker/{ticker}/range/1/day/{from}/{to}?sort=asc&limit=50000&apiKey={apiKey}", ticker, destDate, curDate, apiKey)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
                 .map(val -> {
-                    JsonNode results = val.path("results");
-                    Map<String, Double> returnValue = new HashMap<>();
-                    double maxValue = 0.0;
-                    for(JsonNode result: results) {
-                        if(result.path("vw").asDouble() > maxValue) maxValue = result.path("vw").asDouble();
-                        LocalDate prevDate = curDate.minusDays(1);
-                        LocalDate fiveDate = curDate.minusDays(5);
-                        LocalDate monthDate = curDate.minusMonths(1);
-                        LocalDate sixMonthDate = curDate.minusMonths(6);
-                        LocalDate ydtDate = curDate.withDayOfYear(1);
-                        LocalDate yearDate = curDate.minusYears(1);
-                        LocalDate fiveYearDate = curDate.minusYears(5);
-                        double milliseconds = result.path("t").asDouble();
-                        if(CalculatorUtils.getLocalDate(milliseconds).isEqual(prevDate)) {
-                            returnValue.put("prevDate", result.path("vw").asDouble());
-                        } else if(CalculatorUtils.getLocalDate(milliseconds).isEqual(fiveDate)) {
-                            returnValue.put("fiveDate", result.path("vw").asDouble());
-                        } else if(CalculatorUtils.getLocalDate(milliseconds).isEqual(monthDate)) {
-                            returnValue.put("monthDate", result.path("vw").asDouble());
-                        } else if(CalculatorUtils.getLocalDate(milliseconds).isEqual(sixMonthDate)) {
-                            returnValue.put("sixMonthDate", result.path("vw").asDouble());
-                        } else if(CalculatorUtils.getLocalDate(milliseconds).isEqual(ydtDate)) {
-                            returnValue.put("ydtDate", result.path("vw").asDouble());
-                        } else if(CalculatorUtils.getLocalDate(milliseconds).isEqual(yearDate)) {
-                            returnValue.put("yearDate", result.path("vw").asDouble());
-                        } else if(CalculatorUtils.getLocalDate(milliseconds).isEqual(fiveYearDate)) {
-                            returnValue.put("fiveYearDate", result.path("vw").asDouble());
-                        }
-
-                    }
-                    returnValue.put("max", maxValue);
-                    return returnValue;
+                    return val.path("results");
                 });
     }
 }

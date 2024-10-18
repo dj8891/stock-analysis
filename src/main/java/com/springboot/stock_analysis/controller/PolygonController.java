@@ -53,9 +53,9 @@ public class PolygonController {
                 .map(ResponseEntity::ok);
     }
 
-    @GetMapping("/chart/{ticker}")
-    public Mono<ResponseEntity<?>> getChartData(@PathVariable String ticker) {
-        return polygonApiService.getChartData(ticker)
+    @GetMapping("/chart/{ticker}/{date}")
+    public Mono<ResponseEntity<?>> getChartData(@PathVariable(name="ticker") String ticker, @PathVariable(name="date") String date) {
+        return polygonApiService.getChartData(ticker, date)
                 .map(ResponseEntity::ok);
     }
 
