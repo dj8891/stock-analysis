@@ -1,7 +1,6 @@
 package com.springboot.stock_analysis.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.springboot.stock_analysis.dto.RatedStockDTO;
 import com.springboot.stock_analysis.model.Stocks;
 import com.springboot.stock_analysis.model.WatchList;
 import com.springboot.stock_analysis.repository.WatchListRepository;

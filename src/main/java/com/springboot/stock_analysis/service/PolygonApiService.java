@@ -152,33 +152,30 @@ public class PolygonApiService {
                     for(JsonNode result: results) {
                         Map<String, String> returnValue = new HashMap<>();
                         JsonNode tickerList = result.path("tickers");
+                        String tickersStr = "";
+                        for(JsonNode ticker: tickerList) {
+                            tickersStr += (tickersStr.isEmpty() ? "" : ",") + ticker;
+                        }
                         List<Map<String, Double>> ratedStockDTOList = new ArrayList<>();
-                        if(tickerList.isArray()) {
-                            String tickersStr = "";
-                            for(JsonNode ticker: tickerList) {
-                                List<Stocks> relStocks = this.stocksRepository.findByTicker(ticker.toString());
-                                if(!relStocks.isEmpty()) {
-                                    tickersStr += (tickersStr.isEmpty() ? "" : ",") + relStocks.getFirst().getTicker();
-                                }
-                            }
-                            if(!tickersStr.isEmpty()) {
-                                JsonNode summary = webClient.get()
-                                        .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers={ticker}&apiKey={apiKey}", tickersStr, apiKey)
-                                        .retrieve()
-                                        .bodyToMono(JsonNode.class)
-                                        .block();
-                                double changePerc = 0.0;
-                                if (summary != null) {
-                                    for(JsonNode node: summary.path("tickers")) {
-                                        changePerc = node.path("todaysChangePerc").asDouble();
-                                        String nodeTicker = node.path("ticker").asText();
-                                        Map<String, Double> tmpMap = new HashMap<>();
-                                        tmpMap.put('"' + nodeTicker + '"', changePerc);
-                                        ratedStockDTOList.add(tmpMap);
-                                    }
+
+                        if(!tickersStr.isEmpty()) {
+                            JsonNode summary = webClient.get()
+                                    .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers={ticker}&apiKey={apiKey}", tickersStr, apiKey)
+                                    .retrieve()
+                                    .bodyToMono(JsonNode.class)
+                                    .block();
+                            double changePerc = 0.0;
+                            if (summary != null) {
+                                for(JsonNode node: summary.path("tickers")) {
+                                    changePerc = node.path("todaysChangePerc").asDouble();
+                                    String nodeTicker = node.path("ticker").asText();
+                                    Map<String, Double> tmpMap = new HashMap<>();
+                                    tmpMap.put('"' + nodeTicker + '"', changePerc);
+                                    ratedStockDTOList.add(tmpMap);
                                 }
                             }
                         }
+
                         LocalDateTime curDate = LocalDateTime.now();
                         LocalDateTime publishDate = ZonedDateTime.parse(result.path("published_utc").asText())
                                 .withZoneSameInstant(ZoneId.systemDefault())
