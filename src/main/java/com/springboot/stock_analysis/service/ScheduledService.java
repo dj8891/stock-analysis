@@ -140,11 +140,13 @@ public class ScheduledService {
     }
 
     public JsonNode getAllActiveTickers() {
-        return webClient.get()
+        JsonNode tickers = webClient.get()
                 .uri("/v2/snapshot/locale/us/markets/stocks/tickers?apiKey={apiKey}", apiKey)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
                 .block();
+        assert tickers != null;
+        return tickers.get("tickers");
     }
 
     public void asyncGetOneStockInfo(String ticker) {
