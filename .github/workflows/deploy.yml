@@ -32,4 +32,4 @@ jobs:
         run: mvn clean install
 
       - name: Deploy the App
-        run: sudo java -jar target/stock_analysis-0.0.1-SNAPSHOT.jar
+        run: sudo java -jar target/stock_analysis-0.0.1-SNAPSHOT.jar &
