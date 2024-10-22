@@ -140,17 +140,11 @@ public class ScheduledService {
     }
 
     public JsonNode getAllActiveTickers() {
-        try {
-            String response = webClient.get()
-                    .uri("/v2/snapshot/locale/us/markets/stocks/tickers?apiKey={apiKey}", apiKey)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
-            return mapper.readTree(response).get("tickers");
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return webClient.get()
+                .uri("/v2/snapshot/locale/us/markets/stocks/tickers?apiKey={apiKey}", apiKey)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .block();
     }
 
     public void asyncGetOneStockInfo(String ticker) {
