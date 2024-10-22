@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class CustomErrorHandler implements ErrorController {
     @RequestMapping("/error")
     public String handleError() {
-        // Return the path to index.html for unmatched URLs
         return "forward:/index.html";
     }
 }
