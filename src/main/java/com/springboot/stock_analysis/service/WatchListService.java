@@ -90,12 +90,22 @@ public class WatchListService {
     public List<Map<String, String>> getNewsData() {
         List<WatchList> watchLists = this.watchListRepository.findAll();
         List<Map<String, String>> returnList = new ArrayList<>();
+
+        int limit = switch (watchLists.size()) {
+            case 1 -> 4;
+            case 2, 3 -> 2;
+            default -> 1;
+        };
         if (!watchLists.isEmpty()) {
+            int maxLimit = 0;
             for (WatchList watchList : watchLists) {
-                List<Map<String, String>> newsList = this.polygonApiService.getNews(watchList.getTicker()).block();
-                if (newsList != null)
+                List<Map<String, String>> newsList = this.polygonApiService.getNews(watchList.getTicker(), String.valueOf(limit), 0).block();
+                if (newsList != null) {
                     returnList = Stream.concat(returnList.stream(), newsList.stream())
                             .toList();
+                    maxLimit += limit;
+                }
+                if(maxLimit > 4) break;
             }
             return returnList;
         }

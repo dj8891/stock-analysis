@@ -13,11 +13,13 @@ public class Tickers {
     private String shortName;
     private String fullName;
 
-    public Tickers() {}
-
     public Tickers(String shortName, String fullName) {
         this.shortName = shortName;
         this.fullName = fullName;
+    }
+
+    public Tickers() {
+
     }
 
     public Long getId() {

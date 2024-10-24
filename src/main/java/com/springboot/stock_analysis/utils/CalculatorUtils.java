@@ -51,10 +51,15 @@ public class CalculatorUtils {
         else return new Stocks();
     }
 
-    public static double overallGrowth(Map<String, List<Stocks>> allStocks, String ticker, int startYear, int endYear) {
-        int growthRating = growthEvaluation(allStocks, ticker, startYear, endYear);
-        int valueRating = valueCriteria(allStocks, ticker, startYear, endYear);
-        int performanceRating = performanceEvaluation(allStocks, ticker, startYear, endYear);
+    public static double overallGrowth(Map<String, List<Stocks>> allStocks, String ticker) {
+        int lastYear = LocalDate.now().getYear();
+
+        // when calculating growth score, there need to use 3 years of data
+        int growthRating = growthEvaluation(allStocks, ticker, (lastYear - 3), lastYear);
+        // 5 years of data for value score
+        int valueRating = valueCriteria(allStocks, ticker, (lastYear - 5), lastYear);
+        // 1 year of data for best performance
+        int performanceRating = performanceEvaluation(allStocks, ticker, (lastYear - 1), lastYear);
         double growth = (growthRating / 10.0) * 4;
         double value = (valueRating / 10.0) * 2.7;
         double performance = (performanceRating / 10.0) * 3.3;
@@ -134,7 +139,7 @@ public class CalculatorUtils {
             lastData = lastStocks.getStock();
             firstData = startStocks.getStock();
         }
-        return getGrowthRate(firstData, lastData, (endYear - startYear));
+        return getGrowthRate(firstData, lastData, (endYear - startYear + 1));
     }
 
     public static Integer valueCriteria(Map<String, List<Stocks>> allStocks, String ticker, int startYear, int endYear) {

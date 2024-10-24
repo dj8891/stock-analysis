@@ -1,12 +1,14 @@
 package com.springboot.stock_analysis.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.springboot.stock_analysis.dto.PageInfoDTO;
 import com.springboot.stock_analysis.model.Tickers;
 import com.springboot.stock_analysis.model.Stocks;
 import com.springboot.stock_analysis.repository.TickersRepository;
 import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import java.util.Optional;
 import java.time.Year;
 
@@ -94,49 +100,44 @@ public class ScheduledService {
         }
     }
 
+    private Mono<JsonNode> fetchNewsWithCursor(String cursor) {
+        return webClient.get()
+                .uri("/v3/reference/tickers?active=true&limit=1000&cursor={cursor}&apiKey={apiKey}", cursor, apiKey)
+                .retrieve()
+                .bodyToMono(JsonNode.class);
+    }
+
     public void getAllTickers() {
-        JsonNode allTickers = null;
+        Mono.just("")
+                .expand(cursor -> this.fetchNewsWithCursor(cursor)
+                        .flatMap(response -> {
+                            JsonNode results = response.path("results");
+                            String nextUrl = response.path("next_url").asText();
+                            for(JsonNode result: results) {
+                                String ticker = result.path("ticker").asText();
+                                String name = result.path("name").asText();
+                                addTicker(ticker, name);
+                            }
+                            // Stop fetching if no more pages or results are empty
+                            if (nextUrl.isEmpty() || results.isEmpty()) {
+                                return Mono.empty();
+                            }
 
-        try {
-            System.out.println("LOG: Getting all tickers started!");
+                            // Extract the next cursor
+                            List<String> urlParts = List.of(nextUrl.split("="));
+                            String nextCursor = urlParts.size() > 1 ? urlParts.get(1) : "";
 
-            String response = webClient.get()
-                    .uri("/v3/reference/tickers?active=true&limit=1000&apiKey={apiKey}", apiKey)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
-            allTickers = mapper.readTree(response);
-
-            while (true) {
-                allTickers.path("results").forEach(result -> {
-                    addTicker(result.path("ticker").asText(), result.path("name").asText());
-                });
-
-                if (!allTickers.has("next_url")) {
-                    break;
-                }
-
-                final WebClient _webClient = WebClient
-                        .builder()
-                        .codecs(configurer -> configurer
-                            .defaultCodecs()
-                            .maxInMemorySize(128 * 1024 * 1024))
-                        .build();
-
-                response = _webClient.get()
-                        .uri(allTickers.path("next_url").asText() + "&apiKey={apiKey}", apiKey)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
-
-                allTickers = mapper.readTree(response);
-            }
-
-            System.out.println("LOG: Getting all tickers completed!");
-        } catch (Exception e) {
-            System.out.println("ERROR: Getting all tickers error - " + e.getMessage());
-        }
+                            // Continue with the next cursor
+                            return Mono.just(nextCursor);
+                        })
+                )
+                .doOnNext(cursor -> System.out.println("Processing page cursor: " + cursor))
+                .doOnComplete(() -> System.out.println("LOG: Getting all tickers completed!"))
+                .onErrorResume(e -> {
+                    System.out.println("ERROR: Getting all tickers error - " + e.getMessage());
+                    return Mono.empty(); // Handle error gracefully
+                })
+                .subscribe();
     }
 
     public JsonNode getAllActiveTickers() {
@@ -178,10 +179,10 @@ public class ScheduledService {
     public void asyncGetOneFinancialInfo(String ticker, boolean isTTM) {
         CompletableFuture.runAsync(() -> {
             try {
-                String tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=annual&limit=4&apiKey={apiKey}";
+                String tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=annual&limit=5&apiKey={apiKey}";
 
                 if (isTTM) {
-                    tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=ttm&limit=4&apiKey={apiKey}";
+                    tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=ttm&limit=5&apiKey={apiKey}";
                 }
 
                 String response = webClient.get()
@@ -255,5 +256,6 @@ public class ScheduledService {
     @PostConstruct
     public void onStartup() {
         getInfo();
+        getAllTickers();
     }
 }

@@ -42,15 +42,17 @@ public class PolygonController {
     }
 
     @PostMapping("/news")
-    public Mono<ResponseEntity<?>> getNews(@RequestParam("tickers") String tickers) {
-        return polygonApiService.getNews(tickers)
+    public Mono<ResponseEntity<?>> getNews(@RequestParam("tickers") String tickers, @RequestParam("limit") String limit, @RequestParam("page") String page) {
+        return polygonApiService.getNews(tickers, limit, Integer.parseInt(page))
                 .map(ResponseEntity::ok);
     }
 
     @GetMapping("/stock/{ticker}")
     public Mono<ResponseEntity<?>> getStockData(@PathVariable String ticker) {
-        return polygonApiService.getStockData(ticker)
+        if(polygonApiService.getStockData(ticker) != null)
+            return polygonApiService.getStockData(ticker)
                 .map(ResponseEntity::ok);
+        else return Mono.just(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/chart/{ticker}/{date}")
