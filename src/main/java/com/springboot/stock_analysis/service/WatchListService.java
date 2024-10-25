@@ -23,12 +23,15 @@ public class WatchListService {
     private final WatchListRepository watchListRepository;
     private final WebClient webClient;
     private final PolygonApiService polygonApiService;
+    private final CalculatorUtils calculatorUtils;
     public WatchListService(WatchListRepository watchListRepository,
                             WebClient webClient,
-                            PolygonApiService polygonApiService) {
+                            PolygonApiService polygonApiService,
+                            CalculatorUtils calculatorUtils) {
         this.watchListRepository = watchListRepository;
         this.webClient = webClient;
         this.polygonApiService = polygonApiService;
+        this.calculatorUtils = calculatorUtils;
     }
 
     public Optional<WatchList> getWatchByTicker(String ticker) {
@@ -39,15 +42,15 @@ public class WatchListService {
         List<WatchList> watchLists = this.watchListRepository.findAll();
         if(!watchLists.isEmpty()) {
             StringBuilder tickerListStr = new StringBuilder();
-            int curYear = LocalDate.now().getYear();
+            int curYear = LocalDate.now().getYear() - 1;
             int prevYear = curYear - 1;
             List<Map<String, String>> returnVal = new ArrayList<>();
             double totalPrice = 0.0;
             for(WatchList watchList: watchLists) {
                 tickerListStr.append((tickerListStr.isEmpty()) ? "" : ",").append(watchList.getTicker());
-                double companyGrowthRate = CalculatorUtils.companyGrowthRate(this.polygonApiService.getAllStocks(), watchList.getTicker(), prevYear, curYear, "stock");
-                Stocks stock = CalculatorUtils.findStockByTickerAndYear(this.polygonApiService.getAllStocks(), watchList.getTicker(), "TTM");
-                Stocks prevStock = CalculatorUtils.findStockByTickerAndYear(this.polygonApiService.getAllStocks(), watchList.getTicker(), String.valueOf(prevYear));
+                double companyGrowthRate = this.calculatorUtils.companyGrowthRate(this.polygonApiService.getAllStocks(), watchList.getTicker(), curYear, curYear + 1, "stock");
+                Stocks stock = this.calculatorUtils.findStockByTickerAndYear(this.polygonApiService.getAllStocks(), watchList.getTicker(), "TTM");
+                Stocks prevStock = this.calculatorUtils.findStockByTickerAndYear(this.polygonApiService.getAllStocks(), watchList.getTicker(), String.valueOf(curYear));
                 double stockPrice = stock.getStock();
                 double growthPrice = stockPrice - prevStock.getStock();
                 Map<String, String> tmpRtn = new HashMap<>();

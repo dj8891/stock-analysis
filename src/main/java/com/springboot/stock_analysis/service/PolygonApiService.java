@@ -34,8 +34,10 @@ public class PolygonApiService {
     private final List<String> allTickers;
     private final Map<String, List<Stocks>> allStocks = new HashMap<>();
     private final TickersRepository tickersRepository;
-    public PolygonApiService(WebClient webClient, StocksRepository stocksRepository, TickersRepository tickersRepository) throws JsonProcessingException {
+    private final CalculatorUtils calculatorUtils;
+    public PolygonApiService(WebClient webClient, StocksRepository stocksRepository, TickersRepository tickersRepository, CalculatorUtils calculatorUtils) throws JsonProcessingException {
         this.webClient = webClient;
+        this.calculatorUtils = calculatorUtils;
         this.stocksRepository = stocksRepository;
         List<String> stockList = this.stocksRepository.findGroupedStocks();
         this.tickersRepository = tickersRepository;
@@ -77,7 +79,7 @@ public class PolygonApiService {
         List<RatedStockDTO> ratedStocks = new ArrayList<RatedStockDTO>();
         if(!this.allStocks.isEmpty()) {
             for(String ticker: this.allTickers) {
-                double stockGrowth = CalculatorUtils.overallGrowth(this.allStocks, ticker);
+                double stockGrowth = this.calculatorUtils.overallGrowth(this.allStocks, ticker);
                 if(Double.isNaN(stockGrowth) || Double.isInfinite(stockGrowth)) continue;;
                 RatedStockDTO ratedStockDTO = new RatedStockDTO(ticker, stockGrowth);
                 ratedStocks.add(ratedStockDTO);
@@ -121,9 +123,9 @@ public class PolygonApiService {
         List<PerformanceDTO> performanceList = new ArrayList<>();
         if(!this.allStocks.isEmpty()) {
             for(String ticker: this.allTickers) {
-                Stocks ttmStock = CalculatorUtils.findStockByTickerAndYear(this.allStocks, ticker, "TTM");
+                Stocks ttmStock = this.calculatorUtils.findStockByTickerAndYear(this.allStocks, ticker, "TTM");
                 if(ttmStock.getStock() < 10) continue;
-                double growth = CalculatorUtils.companyGrowthRate(this.allStocks, ticker, lastYear, curYear, "stock");
+                double growth = this.calculatorUtils.companyGrowthRate(this.allStocks, ticker, (lastYear - 1), lastYear, "stock");
                 if(Double.isNaN(growth) || Double.isInfinite(growth)) continue;
                 PerformanceDTO performanceDTO = new PerformanceDTO(ticker, growth);
                 performanceList.add(performanceDTO);
@@ -272,11 +274,10 @@ public class PolygonApiService {
             returnValue.put("changePerc", String.valueOf(changePerc));
             returnValue.put("changePrice", String.valueOf(changePrice));
 
-            int endYear = LocalDate.now().getYear();
-            int startYear = endYear - 1;
-            int growthRating = CalculatorUtils.growthEvaluation(allStocks, ticker, startYear, endYear);
-            int valueRating = CalculatorUtils.valueCriteria(allStocks, ticker, startYear, endYear);
-            int performanceRating = CalculatorUtils.performanceEvaluation(allStocks, ticker, startYear, endYear);
+            int endYear = LocalDate.now().getYear() - 1;
+            int growthRating = this.calculatorUtils.growthEvaluation(allStocks, ticker, endYear);
+            int valueRating = this.calculatorUtils.valueCriteria(allStocks, ticker, endYear);
+            int performanceRating = this.calculatorUtils.performanceEvaluation(allStocks, ticker, endYear);
             double growth = (growthRating / 10.0) * 4;
             double value = (valueRating / 10.0) * 2.7;
             double performance = (performanceRating / 10.0) * 3.3;
@@ -296,17 +297,18 @@ public class PolygonApiService {
                         String marketCap = "";
                         marketCap = String.format("%.2fB", val.path("results")
                                 .path("market_cap").asDouble() / 1000000000.0);
-                        double epsTTM = CalculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getEps();
+                        double epsTTM = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getEps();
                         returnValue.put("marketCap", marketCap);
                         returnValue.put("epsTTM", String.valueOf(epsTTM));
 
-                        double revenueGrowth = CalculatorUtils.companyGrowthRate(allStocks, ticker, startYear, endYear, "revenue");
-                        double stockGrowth = CalculatorUtils.companyGrowthRate(allStocks, ticker, startYear, endYear, "stock");
-                        Stocks startStocks = CalculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(startYear));
-                        Stocks ttmData = CalculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM");
-                        Stocks lastStocks = CalculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear));
-                        if (lastStocks.getTicker().isEmpty()) lastStocks = ttmData;
-                        double peg = CalculatorUtils.cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
+                        double revenueGrowth = this.calculatorUtils.companyGrowthRate(allStocks, ticker, endYear - 2, endYear, "revenue");
+                        double stockGrowth = this.calculatorUtils.companyGrowthRate(allStocks, ticker, endYear - 2, endYear, "stock");
+                        Stocks startStocks = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear - 4));
+                        Stocks lastStocks = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear));
+
+                        double peg = 0;
+                        if(startStocks.getEps() != 0)
+                         peg = this.calculatorUtils.cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
                         returnValue.put("revenueGrowthRate", String.valueOf(revenueGrowth));
                         returnValue.put("stockGrowthRate", String.valueOf(stockGrowth));
                         returnValue.put("pegRatio", String.valueOf(peg));

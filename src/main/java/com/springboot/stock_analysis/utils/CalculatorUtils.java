@@ -1,5 +1,6 @@
 package com.springboot.stock_analysis.utils;
 import com.springboot.stock_analysis.model.Stocks;
+import org.springframework.stereotype.Component;
 
 import java.text.DecimalFormat;
 import java.time.*;
@@ -12,11 +13,25 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
+@Component
 public class CalculatorUtils {
 
-    public static double getGrowthRate(double startPrice, double endPrice, int period) {
+    public int minusPoint;
+    public CalculatorUtils() {
+
+    }
+    public int getMinusPoint() {
+        return minusPoint;
+    }
+
+    public void setMinusPoint(int minusPoint) {
+        this.minusPoint = minusPoint;
+    }
+
+    public double getGrowthRate(double startPrice, double endPrice, int period) {
         double rate = 0;
         if(startPrice == 0) return 0;
+
         if(endPrice < 0 && startPrice < 0) {
             double endPriceAbs = Math.abs(endPrice);
             double startPriceAbs = Math.abs(startPrice);
@@ -26,7 +41,7 @@ public class CalculatorUtils {
         return (avgRate - 1.0) * 100;
     }
 
-    public static Stocks findStockByTickerAndYear(Map<String, List<Stocks>> data, String ticker, String year) {
+    public Stocks findStockByTickerAndYear(Map<String, List<Stocks>> data, String ticker, String year) {
         List<Stocks> dataList = data.get(ticker);
         if(dataList != null) {
             for(Stocks stockData: dataList) {
@@ -51,15 +66,15 @@ public class CalculatorUtils {
         else return new Stocks();
     }
 
-    public static double overallGrowth(Map<String, List<Stocks>> allStocks, String ticker) {
-        int lastYear = LocalDate.now().getYear();
+    public double overallGrowth(Map<String, List<Stocks>> allStocks, String ticker) {
+        int lastYear = LocalDate.now().getYear() - 1;
 
         // when calculating growth score, there need to use 3 years of data
-        int growthRating = growthEvaluation(allStocks, ticker, (lastYear - 3), lastYear);
+        int growthRating = growthEvaluation(allStocks, ticker, lastYear);
         // 5 years of data for value score
-        int valueRating = valueCriteria(allStocks, ticker, (lastYear - 5), lastYear);
+        int valueRating = valueCriteria(allStocks, ticker, lastYear);
         // 1 year of data for best performance
-        int performanceRating = performanceEvaluation(allStocks, ticker, (lastYear - 1), lastYear);
+        int performanceRating = performanceEvaluation(allStocks, ticker, lastYear);
         double growth = (growthRating / 10.0) * 4;
         double value = (valueRating / 10.0) * 2.7;
         double performance = (performanceRating / 10.0) * 3.3;
@@ -69,8 +84,9 @@ public class CalculatorUtils {
         return Double.parseDouble(f.format(overallScore));
     }
 
-    public static Integer growthEvaluation(Map<String, List<Stocks>> allStocks, String ticker, int startYear, int endYear) {
+    public Integer growthEvaluation(Map<String, List<Stocks>> allStocks, String ticker, int endYear) {
         int growthEvaluating = 1;
+        int startYear = endYear - 2;
         Stocks ttmData = findStockByTickerAndYear(allStocks, ticker, "TTM");
         double revTTM = ttmData.getRevenue();
         Stocks prvData = findLastStockByTicker(allStocks, ticker);
@@ -106,7 +122,11 @@ public class CalculatorUtils {
         if ((revenueGrowth > 20.0) && (epsGrowth > 20.0)) {
             growthEvaluating = 10;
         }
-        return growthEvaluating;
+        if(this.getMinusPoint() > 0) {
+            growthEvaluating = growthEvaluating - this.getMinusPoint();
+            this.setMinusPoint(0);
+        }
+        return Math.max(growthEvaluating, 0);
     }
 
     /**
@@ -116,84 +136,131 @@ public class CalculatorUtils {
      * @param indicator : revenue: company's revenue growthRate, eps: company's eps growthRate, stock: company's stock growthRate, in this case, ticker="SPY", "DIA", "QQQ" possible
      * @return get growth rate per year
      */
-    public static Double companyGrowthRate(Map<String, List<Stocks>> allStocks, String ticker, int startYear, int endYear, String indicator) {
-        Stocks startStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(startYear));
-        Stocks ttmData = findStockByTickerAndYear(allStocks, ticker, "TTM");
-        Stocks lastStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear));
-        if(lastStocks.getTicker().isEmpty()) {
-          if(indicator.equals("stock")) lastStocks = ttmData;
-          else {
-            startStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(startYear - 1));
-            lastStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear - 1));
-          }
+    public Double companyGrowthRate(Map<String, List<Stocks>> allStocks, String ticker, int startYear, int endYear, String indicator) {
+        int tmpStartYear = startYear;
+        int tmpEndYear = endYear;
+
+        if(indicator.equals("revenue") || indicator.equals("eps")) {
+            tmpStartYear = endYear - 3;
         }
+        Stocks lastStocks = findStockByTickerAndYear(allStocks, ticker, (endYear == LocalDate.now().getYear() ? "TTM" : String.valueOf(endYear)));
+        Stocks startStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear));
+        if(lastStocks.getTicker().isEmpty() && !indicator.equals("stock")) {
+                tmpStartYear--;
+                tmpEndYear--;
+                lastStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpEndYear));
+                startStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear));
+        }
+
+        Stocks startStock1 = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear + 1));
+        Stocks startStock2 = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear + 2));
+
         double lastData = 0;
         double firstData = 0;
-        if(indicator.equals("revenue")) {
-            lastData = lastStocks.getRevenue();
-            firstData = startStocks.getRevenue();
-        } else if(indicator.equals("eps")) {
-            lastData = lastStocks.getEps();
-            firstData = startStocks.getEps();
-        } else if(indicator.equals("stock")) {
-            lastData = lastStocks.getStock();
-            firstData = startStocks.getStock();
+        switch (indicator) {
+            case "revenue" -> {
+                lastData = lastStocks.getRevenue();
+                firstData = startStocks.getRevenue();
+                if(firstData == 0.0) {
+                    if(startStock1.getRevenue() == 0.0) {
+                        firstData = startStock2.getRevenue();
+                        tmpStartYear = tmpStartYear + 2;
+                        this.setMinusPoint(5);
+                    } else {
+                        firstData = startStock1.getRevenue();
+                        tmpStartYear++;
+                        if(this.getMinusPoint() != 5) this.setMinusPoint(1);
+                    }
+                }
+            }
+            case "eps" -> {
+                lastData = lastStocks.getEps();
+                firstData = startStocks.getEps();
+                if(firstData == 0.0) {
+                    if(startStock1.getEps() == 0.0) {
+                        firstData = startStock2.getEps();
+                        tmpStartYear = tmpStartYear + 2;
+                        this.setMinusPoint(5);
+                    } else {
+                        firstData = startStock1.getEps();
+                        tmpStartYear++;
+                        if(this.getMinusPoint() !=5 ) this.setMinusPoint(1);
+                    }
+                }
+            }
+            case "stock" -> {
+                lastData = lastStocks.getStock();
+                firstData = startStocks.getStock();
+            }
         }
-        return getGrowthRate(firstData, lastData, (endYear - startYear + 1));
+        if(firstData <= 0 || lastData < 0) return (double) 0;
+        else return getGrowthRate(firstData, lastData, (tmpEndYear - tmpStartYear + 1));
     }
 
-    public static Integer valueCriteria(Map<String, List<Stocks>> allStocks, String ticker, int startYear, int endYear) {
+    public Integer valueCriteria(Map<String, List<Stocks>> allStocks, String ticker, int endYear) {
+        int startYear = endYear - 4;
         Stocks startStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(startYear));
-        Stocks ttmData = findStockByTickerAndYear(allStocks, ticker, "TTM");
         Stocks lastStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear));
-        if(lastStocks.getTicker().isEmpty()) lastStocks = ttmData;
+
         double stockPrice = lastStocks.getStock();
         double epsPrice = lastStocks.getEps();
+        if(epsPrice == 0) return 2;
         double pe = stockPrice / epsPrice;
         double epsGrowth = companyGrowthRate(allStocks, ticker, startYear, endYear, "eps");
-        double peg = cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
         int valueEvaluation = 1;
-        if (epsGrowth < 0.0 && (peg > 10.0) && (peg < 12.0)) {
-            valueEvaluation = 2;
-        }
-        if ((peg < 0) && (pe < 50.0)) {
-            return 2;
-        }
-        if (((epsGrowth > 0) && (peg > 8.0))) {
-            if (peg < 10.0) {
-                valueEvaluation = 3;
+
+        if(startStocks.getEps() == 0) {
+            if(pe < 15) return 8;
+            if(pe > 15 && pe < 30) return 7;
+            if(pe > 30 && pe < 50) return 4;
+            if(pe > 50 && pe < 100) return 3;
+            if(pe > 100) return 2;
+        } else {
+            double peg = cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
+
+            if (epsGrowth < 0.0 && (peg > 10.0) && (peg < 12.0)) {
+                valueEvaluation = 2;
             }
-        }
-        if ((peg < 0) && (pe > 50.0)) {
-            return 3;
-        }
-        if (((epsGrowth > 0) && (peg > 5.0))) {
-            if (peg < 8.0) {
-                valueEvaluation = 4;
+            if ((peg < 0) && (pe < 50.0)) {
+                return 2;
             }
-        }
-        if ((epsGrowth > 0) && (peg > 2.0)) {
-            if (peg < 5.0) {
-                valueEvaluation = 5;
+            if (((epsGrowth > 0) && (peg > 8.0))) {
+                if (peg < 10.0) {
+                    valueEvaluation = 3;
+                }
             }
-        }
-        if ((peg < 2.0) || (Double.compare(peg, 2.0) == 0)) {
-            valueEvaluation = 6;
-        }
-        if ((peg < 1.5) && (peg > 1.2)) {
-            valueEvaluation = 7;
-        }
+            if ((peg < 0) && (pe > 50.0)) {
+                return 3;
+            }
+            if (((epsGrowth > 0) && (peg > 5.0))) {
+                if (peg < 8.0) {
+                    valueEvaluation = 4;
+                }
+            }
+            if ((epsGrowth > 0) && (peg > 2.0)) {
+                if (peg < 5.0) {
+                    valueEvaluation = 5;
+                }
+            }
+            if ((peg < 2.0) || (Double.compare(peg, 2.0) == 0)) {
+                valueEvaluation = 6;
+            }
+            if ((peg < 1.5) && (peg > 1.2)) {
+                valueEvaluation = 7;
+            }
 //return here later to create a 8
-        if ((peg < 1.2) && (peg > 1.0)) {
-            valueEvaluation = 9;
+            if ((peg < 1.2) && (peg > 1.0)) {
+                valueEvaluation = 9;
+            }
+            if (peg < 1.0) {
+                valueEvaluation = 10;
+            }
         }
-        if (peg < 1.0) {
-            valueEvaluation = 10;
-        }
+
         return valueEvaluation;
     }
 
-    public static Double cagrForCompanyNumerical(Map<String, List<Stocks>> allStocks, Stocks startStock, Stocks lastStock, String ticker) {
+    public Double cagrForCompanyNumerical(Map<String, List<Stocks>> allStocks, Stocks startStock, Stocks lastStock, String ticker) {
         double stockPrice = lastStock.getStock();
         double startEpsValue = startStock.getEps();
         double lastEpsValue = lastStock.getEps();
@@ -210,7 +277,7 @@ public class CalculatorUtils {
         return cagr(lastEpsValue, startEpsValue, epsTtm, stockPrice);
     }
 
-    public static Double cagr(double lastEpsValue, double startEpsValue, double epsTtm, double stockPrice) {
+    public Double cagr(double lastEpsValue, double startEpsValue, double epsTtm, double stockPrice) {
         double value1 = 0.0;
         if (lastEpsValue < 0 && startEpsValue < 0) {
             double currentEps = Math.abs(lastEpsValue);
@@ -235,7 +302,8 @@ public class CalculatorUtils {
 
         return String.valueOf(dateTime.getYear());
     }
-    public static Integer performanceEvaluation(Map<String, List<Stocks>> allStocks, String ticker, int firstYear, int lastYear) {
+    public Integer performanceEvaluation(Map<String, List<Stocks>> allStocks, String ticker, int lastYear) {
+        int firstYear = lastYear - 1;
         double stockGrowth = companyGrowthRate(allStocks, ticker, firstYear, lastYear, "stock");
         double spyGrowth = companyGrowthRate(allStocks, "SPY", firstYear, lastYear, "stock");
         int performanceEvaluation = 1;
@@ -268,7 +336,7 @@ public class CalculatorUtils {
         return performanceEvaluation;
     }
 
-    public static LocalDate getLocalDate(double miliseconds) {
+    public LocalDate getLocalDate(double miliseconds) {
         Instant instant = Instant.ofEpochMilli((long) miliseconds);
 
         // Step 3: Convert Instant to ZonedDateTime using system's default time zone

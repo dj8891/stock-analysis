@@ -8,6 +8,8 @@ import com.springboot.stock_analysis.repository.TickersRepository;
 import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import jakarta.annotation.PostConstruct;
@@ -22,6 +24,9 @@ import reactor.core.scheduler.Schedulers;
 
 import java.util.Optional;
 import java.time.Year;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class ScheduledService {
@@ -131,7 +136,6 @@ public class ScheduledService {
                             return Mono.just(nextCursor);
                         })
                 )
-                .doOnNext(cursor -> System.out.println("Processing page cursor: " + cursor))
                 .doOnComplete(() -> System.out.println("LOG: Getting all tickers completed!"))
                 .onErrorResume(e -> {
                     System.out.println("ERROR: Getting all tickers error - " + e.getMessage());
@@ -153,8 +157,10 @@ public class ScheduledService {
     public void asyncGetOneStockInfo(String ticker) {
         CompletableFuture.runAsync(() -> {
             try {
+                LocalDate curDate = LocalDate.now();
+                LocalDate fiveYearsAgo = curDate.minusYears(6);
                 String response = webClient.get()
-                        .uri("/v2/aggs/ticker/{ticker}/range/1/year/2021-01-01/2024-10-10?adjusted=true&sort=asc&apiKey={apiKey}", ticker, apiKey)
+                        .uri("/v2/aggs/ticker/{ticker}/range/1/year/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
                         .retrieve()
                         .bodyToMono(String.class)
                         .block();
@@ -182,7 +188,7 @@ public class ScheduledService {
                 String tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=annual&limit=5&apiKey={apiKey}";
 
                 if (isTTM) {
-                    tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=ttm&limit=5&apiKey={apiKey}";
+                    tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=ttm&apiKey={apiKey}";
                 }
 
                 String response = webClient.get()
@@ -230,27 +236,41 @@ public class ScheduledService {
                 for (int i = 0; i < allTickers.size(); i++) {
                     String ticker = allTickers.get(i).get("ticker").asText();
 
-                    asyncGetOneFinancialInfo(ticker, false);
                     asyncGetOneFinancialInfo(ticker, true);
 
                     if (i > 0 && i % 50 == 0) Thread.sleep(5000);
                 }
 
                 System.out.println("LOG: Getting Financial Info Completed!");
-
-                for (int i = 0; i < allTickers.size(); i++) {
-                    String ticker = allTickers.get(i).get("ticker").asText();
-
-                    asyncGetOneStockInfo(ticker);
-
-                    if (i > 0 && i % 50 == 0) Thread.sleep(5000);
-                }
-
-                System.out.println("LOG: Getting info completed!");
             } catch (Exception e) {
                 System.out.println("ERROR (getInfo): " + e.getMessage());
             }
         }).thenRun(this::getInfo);
+
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+        Runnable dailyTask = () -> CompletableFuture.runAsync(() -> {
+            System.out.println("GET Annual Data Started!");
+            try {
+                JsonNode allTickers = getAllActiveTickers();
+                for (int i = 0; i < allTickers.size(); i++) {
+                    String ticker = allTickers.get(i).get("ticker").asText();
+                    asyncGetOneStockInfo(ticker);
+                    asyncGetOneFinancialInfo(ticker, false);
+                    if (i > 0 && i % 50 == 0) Thread.sleep(5000);
+                }
+            } catch (Exception e) {
+                System.out.println("ERROR: GET Annual Data" + e.getMessage());
+            }
+
+            System.out.println("GET Annual Data completed!");
+        });
+
+        // Calculate the initial delay until the first execution
+        long period = 24 * 60 * 60; // 24 hours in seconds
+
+        // Schedule the task to run daily
+        scheduler.scheduleAtFixedRate(dailyTask, 0, period, TimeUnit.SECONDS);
     }
 
     @PostConstruct
