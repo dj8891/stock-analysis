@@ -102,7 +102,9 @@ public class WatchListService {
         if (!watchLists.isEmpty()) {
             int maxLimit = 0;
             for (WatchList watchList : watchLists) {
-                List<Map<String, String>> newsList = this.polygonApiService.getNews(watchList.getTicker(), String.valueOf(limit), 0).block();
+                List<Map<String, String>> newsList = this.polygonApiService.getNews(watchList.getTicker(), String.valueOf(limit), 0)
+                        .onErrorResume(e -> Mono.empty())
+                        .block();
                 if (newsList != null) {
                     returnList = Stream.concat(returnList.stream(), newsList.stream())
                             .toList();

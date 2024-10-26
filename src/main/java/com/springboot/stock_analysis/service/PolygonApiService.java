@@ -163,6 +163,9 @@ public class PolygonApiService {
                         .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers={ticker}&apiKey={apiKey}", tickersStr.toString(), apiKey)
                         .retrieve()
                         .bodyToMono(JsonNode.class)
+                        .onErrorResume( e -> {
+                            return Mono.empty();
+                        })
                         .block();
                 double changePerc = 0.0;
                 if (summary != null) {
@@ -254,6 +257,9 @@ public class PolygonApiService {
                 .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
+                .onErrorResume( e -> {
+                    return Mono.empty();
+                })
                 .block();
         if(summary != null) {
             double stockPrice = 0.0;
@@ -284,7 +290,7 @@ public class PolygonApiService {
             double stockScore = growth + value + performance;
             returnValue.put("stockScore", String.valueOf(stockScore));
             returnValue.put("growth", String.valueOf(growthRating));
-            returnValue.put("value", String.valueOf(value));
+            returnValue.put("value", String.valueOf(valueRating));
             returnValue.put("performance", String.valueOf(performanceRating));
             Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, ""));
             String company = tickerModel.getFullName();

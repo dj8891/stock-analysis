@@ -9,7 +9,6 @@ import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import jakarta.annotation.PostConstruct;
@@ -18,9 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.Optional;
 import java.time.Year;
@@ -122,7 +119,6 @@ public class ScheduledService {
                             for(JsonNode result: results) {
                                 String ticker = result.path("ticker").asText();
                                 String name = result.path("name").asText();
-                                if(ticker.equals("I:NQPH50LM")) System.out.println("This is last ticker" + nextUrl);
                                 addTicker(ticker, name);
                             }
                             // Stop fetching if no more pages or results are empty
@@ -151,6 +147,9 @@ public class ScheduledService {
                 .uri("/v2/snapshot/locale/us/markets/stocks/tickers?apiKey={apiKey}", apiKey)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
+                .onErrorResume( e -> {
+                    return Mono.empty();
+                })
                 .block();
         assert tickers != null;
         return tickers.get("tickers");
@@ -165,6 +164,9 @@ public class ScheduledService {
                         .uri("/v2/aggs/ticker/{ticker}/range/1/year/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
                         .retrieve()
                         .bodyToMono(String.class)
+                        .onErrorResume( e -> {
+                            return Mono.empty();
+                        })
                         .block();
 
                 JsonNode stocksData = mapper.readTree(response);
@@ -187,7 +189,7 @@ public class ScheduledService {
     public void asyncGetOneFinancialInfo(String ticker, boolean isTTM) {
         CompletableFuture.runAsync(() -> {
             try {
-                String tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=annual&limit=5&apiKey={apiKey}";
+                String tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=annual&limit=6&apiKey={apiKey}";
 
                 if (isTTM) {
                     tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=ttm&apiKey={apiKey}";
@@ -197,6 +199,9 @@ public class ScheduledService {
                         .uri(tmpUri, ticker, apiKey)
                         .retrieve()
                         .bodyToMono(String.class)
+                        .onErrorResume( e -> {
+                            return Mono.empty();
+                        })
                         .block();
 
                 JsonNode financialData = mapper.readTree(response);
@@ -229,19 +234,11 @@ public class ScheduledService {
                     String ticker = allTickers.get(i).get("ticker").asText();
 
                     addStock(ticker, "TTM", allTickers.get(i).path("day").path("vw").asDouble());
-
+                    asyncGetOneFinancialInfo(ticker, true);
                     if (i > 0 && i % 50 == 0) Thread.sleep(500);
                 }
 
                 System.out.println("LOG: Getting Stock TTM Completed!");
-
-                for (int i = 0; i < allTickers.size(); i++) {
-                    String ticker = allTickers.get(i).get("ticker").asText();
-
-                    asyncGetOneFinancialInfo(ticker, true);
-
-                    if (i > 0 && i % 50 == 0) Thread.sleep(5000);
-                }
 
                 System.out.println("LOG: Getting Financial Info Completed!");
             } catch (Exception e) {
@@ -272,7 +269,7 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTask, 0, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTask, 60 * 20, period, TimeUnit.SECONDS);
     }
 
     @PostConstruct

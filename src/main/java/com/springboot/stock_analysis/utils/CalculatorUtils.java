@@ -16,16 +16,26 @@ import java.util.Map;
 @Component
 public class CalculatorUtils {
 
-    public int minusPoint;
+    public int minusRevPoint;
+    public int minusEpsPoint;
     public CalculatorUtils() {
 
     }
-    public int getMinusPoint() {
-        return minusPoint;
+
+    public int getMinusRevPoint() {
+        return minusRevPoint;
     }
 
-    public void setMinusPoint(int minusPoint) {
-        this.minusPoint = minusPoint;
+    public void setMinusRevPoint(int minusRevPoint) {
+        this.minusRevPoint = minusRevPoint;
+    }
+
+    public int getMinusEpsPoint() {
+        return minusEpsPoint;
+    }
+
+    public void setMinusEpsPoint(int minusEpsPoint) {
+        this.minusEpsPoint = minusEpsPoint;
     }
 
     public double getGrowthRate(double startPrice, double endPrice, int period) {
@@ -85,7 +95,7 @@ public class CalculatorUtils {
     }
 
     public Integer growthEvaluation(Map<String, List<Stocks>> allStocks, String ticker, int endYear) {
-        int growthEvaluating = 1;
+        int growthEvaluating = 0;
         int startYear = endYear - 2;
         Stocks ttmData = findStockByTickerAndYear(allStocks, ticker, "TTM");
         double revTTM = ttmData.getRevenue();
@@ -94,38 +104,60 @@ public class CalculatorUtils {
         double revenueGrowth = companyGrowthRate(allStocks, ticker, startYear, endYear, "revenue");
         double epsGrowth = companyGrowthRate(allStocks, ticker, startYear, endYear, "eps");
 
-        if ((revenueGrowth < 0.0)) {
+        if(revenueGrowth < 0.0 && epsGrowth < 0.0 && revTTM < revP) growthEvaluating = 1;
+        if((revenueGrowth < 0.0)) {
             growthEvaluating = 2;
         }
+
         if ((revenueGrowth == 0.0) && (epsGrowth == 0.0)) {
             growthEvaluating = 3;
+            int maxPoint = Math.max(this.getMinusRevPoint(), this.getMinusEpsPoint());
+            growthEvaluating -= maxPoint;
         }
-        if (((revenueGrowth < 10.0) && (revenueGrowth > 0.0))) {
+        if (revenueGrowth < 10.0 && (revTTM < (1.2 * revP))) {
             growthEvaluating = 4;
-        }
-        if (revenueGrowth > 10.0 && (revTTM < (1.2 * revP))) {
-            growthEvaluating = 5;
-        }
-        if ((revenueGrowth > 10.0) && (revenueGrowth < 15.0)) {
-            growthEvaluating = 6;
-        }
-        if ((revenueGrowth > 15.0) && (revenueGrowth < 20.0)) {
-            if (epsGrowth > 15.0) {
-                growthEvaluating = 8;
-            } else {
-                growthEvaluating = 7;
+            if(this.getMinusRevPoint() > 0) {
+                growthEvaluating -= this.getMinusRevPoint();
             }
         }
+        if (((revenueGrowth < 10.0) && (revenueGrowth > 0.0))) {
+            growthEvaluating = 5;
+            if(this.getMinusRevPoint() > 0) {
+                growthEvaluating -= this.getMinusRevPoint();
+            }
+        }
+
+        if ((revenueGrowth > 10.0) && (revenueGrowth < 15.0)) {
+            growthEvaluating = 6;
+            if(this.getMinusRevPoint() > 0) {
+                growthEvaluating -= this.getMinusRevPoint();
+            }
+        }
+        if ((revenueGrowth > 15.0) && (revenueGrowth < 20.0)) {
+            growthEvaluating = 7;
+            if (this.getMinusRevPoint() > 0) {
+                growthEvaluating -= this.getMinusRevPoint();
+            }
+        }
+        if((revenueGrowth > 15.0) && (revenueGrowth < 20) && epsGrowth > 15) {
+            growthEvaluating = 8;
+            int maxPoint = Math.max(this.getMinusRevPoint(), this.getMinusEpsPoint());
+            growthEvaluating -= maxPoint;
+        }
+
         if (revenueGrowth > 20.0) {
             growthEvaluating = 9;
+            if(this.getMinusRevPoint() > 0) {
+                growthEvaluating -= this.getMinusRevPoint();
+            }
         }
         if ((revenueGrowth > 20.0) && (epsGrowth > 20.0)) {
             growthEvaluating = 10;
+            int maxPoint = Math.max(this.getMinusRevPoint(), this.getMinusEpsPoint());
+            growthEvaluating -= maxPoint;
         }
-        if(this.getMinusPoint() > 0) {
-            growthEvaluating = growthEvaluating - this.getMinusPoint();
-            this.setMinusPoint(0);
-        }
+        this.setMinusRevPoint(0);
+        this.setMinusEpsPoint(0);
         return Math.max(growthEvaluating, 0);
     }
 
@@ -146,10 +178,8 @@ public class CalculatorUtils {
         Stocks lastStocks = findStockByTickerAndYear(allStocks, ticker, (endYear == LocalDate.now().getYear() ? "TTM" : String.valueOf(endYear)));
         Stocks startStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear));
         if(lastStocks.getTicker().isEmpty() && !indicator.equals("stock")) {
-                tmpStartYear--;
                 tmpEndYear--;
                 lastStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpEndYear));
-                startStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear));
         }
 
         Stocks startStock1 = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear + 1));
@@ -165,12 +195,17 @@ public class CalculatorUtils {
                     if(startStock1.getRevenue() == 0.0) {
                         firstData = startStock2.getRevenue();
                         tmpStartYear = tmpStartYear + 2;
-                        this.setMinusPoint(5);
+                        this.setMinusRevPoint(5);
                     } else {
                         firstData = startStock1.getRevenue();
                         tmpStartYear++;
-                        if(this.getMinusPoint() != 5) this.setMinusPoint(1);
+                        if(this.getMinusRevPoint() != 5) this.setMinusRevPoint(1);
                     }
+                }
+                if(tmpEndYear == endYear - 1) {
+                    if(this.getMinusEpsPoint() == 1) this.setMinusEpsPoint(5);
+                    else if(this.getMinusRevPoint() == 0) this.setMinusEpsPoint(1);
+                    else return (double) 0;
                 }
             }
             case "eps" -> {
@@ -180,12 +215,17 @@ public class CalculatorUtils {
                     if(startStock1.getEps() == 0.0) {
                         firstData = startStock2.getEps();
                         tmpStartYear = tmpStartYear + 2;
-                        this.setMinusPoint(5);
+                        this.setMinusEpsPoint(5);
                     } else {
                         firstData = startStock1.getEps();
                         tmpStartYear++;
-                        if(this.getMinusPoint() !=5 ) this.setMinusPoint(1);
+                        if(this.getMinusEpsPoint() !=5 ) this.setMinusEpsPoint(1);
                     }
+                }
+                if(tmpEndYear == endYear - 1) {
+                    if(this.getMinusEpsPoint() == 1) this.setMinusEpsPoint(5);
+                    else if(this.getMinusRevPoint() == 0) this.setMinusEpsPoint(1);
+                    else return (double) 0;
                 }
             }
             case "stock" -> {
@@ -204,10 +244,17 @@ public class CalculatorUtils {
 
         double stockPrice = lastStocks.getStock();
         double epsPrice = lastStocks.getEps();
-        if(epsPrice == 0) return 2;
-        double pe = stockPrice / epsPrice;
         double epsGrowth = companyGrowthRate(allStocks, ticker, startYear, endYear, "eps");
-        int valueEvaluation = 1;
+
+        if(epsPrice == 0 && epsGrowth < 0) {
+            return 2;
+        }
+        if(epsPrice == 0 && epsGrowth > 0) return 3;
+
+        double peg = cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
+
+        double pe = stockPrice / epsPrice;
+        int valueEvaluation = 0;
 
         if(startStocks.getEps() == 0) {
             if(pe < 15) return 8;
@@ -216,39 +263,20 @@ public class CalculatorUtils {
             if(pe > 50 && pe < 100) return 3;
             if(pe > 100) return 2;
         } else {
-            double peg = cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
-
-            if (epsGrowth < 0.0 && (peg > 10.0) && (peg < 12.0)) {
-                valueEvaluation = 2;
-            }
+            if(epsGrowth < 0.0 && peg > 10 ) valueEvaluation = 1;
+            if(epsGrowth < 0.0 ) valueEvaluation = 2;
+            if(epsGrowth > 0 && peg < 10 && peg > 8) valueEvaluation = 3;
+            if(epsGrowth > 0 && peg < 8 && peg > 5) valueEvaluation = 4;
+            if(epsGrowth > 0 && peg < 5 && peg > 2) valueEvaluation = 5;
+            if(peg <= 2) valueEvaluation = 6;
+            if(peg > 1.2 && peg < 1.5) valueEvaluation = 7;
             if ((peg < 0) && (pe < 50.0)) {
                 return 2;
-            }
-            if (((epsGrowth > 0) && (peg > 8.0))) {
-                if (peg < 10.0) {
-                    valueEvaluation = 3;
-                }
             }
             if ((peg < 0) && (pe > 50.0)) {
                 return 3;
             }
-            if (((epsGrowth > 0) && (peg > 5.0))) {
-                if (peg < 8.0) {
-                    valueEvaluation = 4;
-                }
-            }
-            if ((epsGrowth > 0) && (peg > 2.0)) {
-                if (peg < 5.0) {
-                    valueEvaluation = 5;
-                }
-            }
-            if ((peg < 2.0) || (Double.compare(peg, 2.0) == 0)) {
-                valueEvaluation = 6;
-            }
-            if ((peg < 1.5) && (peg > 1.2)) {
-                valueEvaluation = 7;
-            }
-//return here later to create a 8
+
             if ((peg < 1.2) && (peg > 1.0)) {
                 valueEvaluation = 9;
             }
@@ -306,33 +334,23 @@ public class CalculatorUtils {
         int firstYear = lastYear - 1;
         double stockGrowth = companyGrowthRate(allStocks, ticker, firstYear, lastYear, "stock");
         double spyGrowth = companyGrowthRate(allStocks, "SPY", firstYear, lastYear, "stock");
-        int performanceEvaluation = 1;
-        if (stockGrowth < (spyGrowth - 5.0)) {
+        double threeSpyGrowth = companyGrowthRate(allStocks, "SPY", firstYear - 1 , lastYear, "stock");
+        double sevenSpyGrowth = companyGrowthRate(allStocks, "SPY", lastYear - 6 , lastYear, "stock");
+        int performanceEvaluation = 0;
+        if(stockGrowth < spyGrowth) {
+            performanceEvaluation = 1;
+        };
+        if(stockGrowth < sevenSpyGrowth) {
             performanceEvaluation = 2;
-        }
-        if (stockGrowth < spyGrowth) {
-            performanceEvaluation = 3;
-        }
-        /* if (performanceCalculator(stockPrices, SPY, ticker, "2021", "2022") < -5.0) {
-            performanceEvaluation = 4;
-        }
-        if (performanceCalculator(stockPrices, SPY, ticker, "2021", "2022") < 0) {
-            performanceEvaluation = 5;
-        }*/
-        if ((Double.compare(stockGrowth, spyGrowth)) == 0) {
-            performanceEvaluation = 6;
-        }
-        if (stockGrowth > spyGrowth) {
-            performanceEvaluation = 7;
-        }
-        /*
-        if ((performanceCalculator(stockPrices, SPY, ticker, "2020", "2022") > 0)) {
-            performanceEvaluation = 8;
-        }
-        if ((performanceCalculator(stockPrices, SPY, ticker, "2021", "2022") > 7.0)) {
-            performanceEvaluation = 9;
-        }*/
-        if(stockGrowth - spyGrowth > 7.0) performanceEvaluation = 9;
+        };
+        if(stockGrowth < spyGrowth - 5) performanceEvaluation = 4;
+        if(stockGrowth == spyGrowth) performanceEvaluation = 5;
+        if(stockGrowth > spyGrowth) performanceEvaluation = 6;
+        if(stockGrowth > threeSpyGrowth) performanceEvaluation = 7;
+        if(stockGrowth - spyGrowth > 4) performanceEvaluation = 8;
+        if(stockGrowth > sevenSpyGrowth) performanceEvaluation = 9;
+        if(stockGrowth - spyGrowth > 7) performanceEvaluation = 10;
+
         return performanceEvaluation;
     }
 
