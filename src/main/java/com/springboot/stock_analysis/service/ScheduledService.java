@@ -1,7 +1,5 @@
 package com.springboot.stock_analysis.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.springboot.stock_analysis.dto.PageInfoDTO;
 import com.springboot.stock_analysis.model.Tickers;
 import com.springboot.stock_analysis.model.Stocks;
 import com.springboot.stock_analysis.repository.TickersRepository;
@@ -205,7 +203,6 @@ public class ScheduledService {
                         .block();
 
                 JsonNode financialData = mapper.readTree(response);
-
                 financialData.get("results").forEach(result -> {
                     String year = result.get("fiscal_year").asText();
 
@@ -246,7 +243,7 @@ public class ScheduledService {
             }
         }).thenRun(this::getInfo);
 
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
         Runnable dailyTask = () -> CompletableFuture.runAsync(() -> {
             System.out.println("GET Annual Data Started!");
@@ -256,15 +253,21 @@ public class ScheduledService {
                     String ticker = allTickers.get(i).get("ticker").asText();
                     asyncGetOneStockInfo(ticker);
                     asyncGetOneFinancialInfo(ticker, false);
-                    if (i > 0 && i % 50 == 0) Thread.sleep(5000);
+                    if (i > 0 && i % 50 == 0) {
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt(); // Restore interrupted status
+                            System.out.println("Thread sleep interrupted: " + e.getMessage());
+                        }
+                    }
                 }
             } catch (Exception e) {
-                System.out.println("ERROR: GET Annual Data" + e.getMessage());
+                System.out.println("ERROR: GET Annual Data " + e.getMessage());
+            } finally {
+                System.out.println("GET Annual Data completed!");
             }
-
-            System.out.println("GET Annual Data completed!");
         });
-
         // Calculate the initial delay until the first execution
         long period = 24 * 60 * 60; // 24 hours in seconds
 
