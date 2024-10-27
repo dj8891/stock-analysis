@@ -32,7 +32,6 @@ public class ScheduledService {
     private final ObjectMapper mapper;
     private TickersRepository tickersRepository = null;
     private StocksRepository stocksRepository = null;
-
     public ScheduledService(WebClient webClient, TickersRepository tickersRepository, StocksRepository stocksRepository) {
         this.webClient = webClient;
         this.tickersRepository = tickersRepository;
@@ -149,8 +148,9 @@ public class ScheduledService {
                     return Mono.empty();
                 })
                 .block();
-        assert tickers != null;
-        return tickers.path("tickers");
+        if(tickers != null)
+            return tickers.path("tickers");
+        else return null;
     }
 
     public void asyncGetOneStockInfo(String ticker) {
@@ -217,18 +217,43 @@ public class ScheduledService {
                 JsonNode allTickers = getAllActiveTickers();
 
                 System.out.println("LOG: Getting info started!");
+                if(allTickers != null) {
+                    for (int i = 0; i < allTickers.size(); i++) {
+                        String ticker = allTickers.get(i).path("ticker").asText();
 
-                for (int i = 0; i < allTickers.size(); i++) {
-                    String ticker = allTickers.get(i).path("ticker").asText();
+                        addStock(ticker, "TTM", allTickers.get(i).path("day").path("vw").asDouble());
+                        asyncGetOneFinancialInfo(ticker, true);
+                        if (i > 0 && i % 50 == 0) Thread.sleep(500);
+                    }
 
-                    addStock(ticker, "TTM", allTickers.get(i).path("day").path("vw").asDouble());
-                    asyncGetOneFinancialInfo(ticker, true);
-                    if (i > 0 && i % 50 == 0) Thread.sleep(500);
+                    System.out.println("LOG: Getting Stock TTM Completed!");
+
+                    System.out.println("LOG: Getting Financial Info Completed!");
+                } else {
+                    System.out.println("LOG: CAN'T GET TICKERS");
+                    List<Tickers> tickersList = this.tickersRepository.findAll();
+                    for(int i = 0 ; i < tickersList.size(); i++) {
+                        String ticker = tickersList.get(i).getShortName();
+                        asyncGetOneFinancialInfo(ticker, true);
+                        JsonNode tickerData = webClient.get()
+                                .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
+                                .retrieve()
+                                .bodyToMono(JsonNode.class)
+                                .block();
+                        if(tickerData != null)
+                            addStock(ticker, "TTM", tickerData.path("ticker").path("day").path("vw").asDouble());
+                        else System.out.println("ERROR: Ticker Data Get Failed!");
+                        if (i > 0 && i % 50 == 0) {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt(); // Restore interrupted status
+                                System.out.println("Thread sleep interrupted: " + e.getMessage());
+                            }
+                        }
+                    }
                 }
 
-                System.out.println("LOG: Getting Stock TTM Completed!");
-
-                System.out.println("LOG: Getting Financial Info Completed!");
             } catch (Exception e) {
                 System.out.println("ERROR (getInfo): " + e.getMessage());
             }
@@ -240,20 +265,34 @@ public class ScheduledService {
             System.out.println("GET Annual Data Started!");
             try {
                 JsonNode allTickers = getAllActiveTickers();
-                for (int i = 0; i < allTickers.size(); i++) {
-                    String ticker = allTickers.get(i).path("ticker").asText();
-                    System.out.println("Ticker name is " + ticker);
-                    if(i == allTickers.size()) {
-                        System.out.println("Arrived ticker end");
+                if(allTickers != null) {
+                    for (int i = 0; i < allTickers.size(); i++) {
+                        String ticker = allTickers.get(i).path("ticker").asText();
+                        asyncGetOneStockInfo(ticker);
+                        asyncGetOneFinancialInfo(ticker, false);
+                        if (i > 0 && i % 50 == 0) {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt(); // Restore interrupted status
+                                System.out.println("Thread sleep interrupted: " + e.getMessage());
+                            }
+                        }
                     }
-                    asyncGetOneStockInfo(ticker);
-                    asyncGetOneFinancialInfo(ticker, false);
-                    if (i > 0 && i % 50 == 0) {
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt(); // Restore interrupted status
-                            System.out.println("Thread sleep interrupted: " + e.getMessage());
+                } else {
+                    System.out.println("LOG: CAN'T GET TICKERS");
+                    List<Tickers> tickersList = this.tickersRepository.findAll();
+                    for(int i = 0 ; i < tickersList.size(); i++) {
+                        String ticker = tickersList.get(i).getShortName();
+                        asyncGetOneStockInfo(ticker);
+                        asyncGetOneFinancialInfo(ticker, false);
+                        if (i > 0 && i % 50 == 0) {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt(); // Restore interrupted status
+                                System.out.println("Thread sleep interrupted: " + e.getMessage());
+                            }
                         }
                     }
                 }
