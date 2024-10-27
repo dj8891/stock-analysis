@@ -150,7 +150,7 @@ public class ScheduledService {
                 })
                 .block();
         assert tickers != null;
-        return tickers.get("tickers");
+        return tickers.path("tickers");
     }
 
     public void asyncGetOneStockInfo(String ticker) {
@@ -158,26 +158,22 @@ public class ScheduledService {
             try {
                 LocalDate curDate = LocalDate.now();
                 LocalDate fiveYearsAgo = curDate.minusYears(6);
-                String response = webClient.get()
+                webClient.get()
                         .uri("/v2/aggs/ticker/{ticker}/range/1/year/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
                         .retrieve()
-                        .bodyToMono(String.class)
-                        .onErrorResume( e -> {
+                        .bodyToMono(JsonNode.class)
+                        .flatMap(response -> {
+                            response.path("results").forEach(result -> {
+                                String year = CalculatorUtils.convertTimestampToDate(result.path("t").asLong());
+
+                                if (year.equals(String.valueOf(Year.now().getValue()))) {
+                                    return;
+                                }
+
+                                addStock(ticker, year, result.path("vw").asDouble());
+                            });
                             return Mono.empty();
-                        })
-                        .block();
-
-                JsonNode stocksData = mapper.readTree(response);
-
-                stocksData.get("results").forEach(result -> {
-                    String year = CalculatorUtils.convertTimestampToDate(result.path("t").asLong());
-
-                    if (year.equals(String.valueOf(Year.now().getValue()))) {
-                        return;
-                    }
-
-                    addStock(ticker, year, result.path("vw").asDouble());
-                });
+                        });
             } catch (Exception e) {
                 System.out.println("ERROR (asyncGetOneStockInfo): [" + ticker + "]" + e.getMessage());
             }
@@ -193,27 +189,22 @@ public class ScheduledService {
                     tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=ttm&apiKey={apiKey}";
                 }
 
-                String response = webClient.get()
+                webClient.get()
                         .uri(tmpUri, ticker, apiKey)
                         .retrieve()
-                        .bodyToMono(String.class)
-                        .onErrorResume( e -> {
+                        .bodyToMono(JsonNode.class)
+                        .flatMap(financialData -> {
+                            financialData.path("results").forEach(result -> {
+                                String year = result.path("fiscal_year").asText();
+                                if (isTTM) {
+                                    year = "TTM";
+                                }
+                                addRevenueAndEps(ticker, year,
+                                        result.path("financials").path("income_statement").path("revenues").path("value").asDouble(),
+                                        result.path("financials").path("income_statement").path("diluted_earnings_per_share").path("value").asDouble());
+                            });
                             return Mono.empty();
-                        })
-                        .block();
-
-                JsonNode financialData = mapper.readTree(response);
-                financialData.get("results").forEach(result -> {
-                    String year = result.get("fiscal_year").asText();
-
-                    if (isTTM) {
-                        year = "TTM";
-                    }
-
-                    addRevenueAndEps(ticker, year,
-                            result.path("financials").path("income_statement").path("revenues").path("value").asDouble(),
-                            result.path("financials").path("income_statement").path("diluted_earnings_per_share").path("value").asDouble());
-                });
+                        });
             } catch (Exception e) {
                 System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
             }
@@ -228,7 +219,7 @@ public class ScheduledService {
                 System.out.println("LOG: Getting info started!");
 
                 for (int i = 0; i < allTickers.size(); i++) {
-                    String ticker = allTickers.get(i).get("ticker").asText();
+                    String ticker = allTickers.get(i).path("ticker").asText();
 
                     addStock(ticker, "TTM", allTickers.get(i).path("day").path("vw").asDouble());
                     asyncGetOneFinancialInfo(ticker, true);
@@ -250,7 +241,11 @@ public class ScheduledService {
             try {
                 JsonNode allTickers = getAllActiveTickers();
                 for (int i = 0; i < allTickers.size(); i++) {
-                    String ticker = allTickers.get(i).get("ticker").asText();
+                    String ticker = allTickers.get(i).path("ticker").asText();
+                    System.out.println("Ticker name is " + ticker);
+                    if(i == allTickers.size()) {
+                        System.out.println("Arrived ticker end");
+                    }
                     asyncGetOneStockInfo(ticker);
                     asyncGetOneFinancialInfo(ticker, false);
                     if (i > 0 && i % 50 == 0) {
@@ -272,7 +267,7 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTask, 60 * 20, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTask, 20 * 60, period, TimeUnit.SECONDS);
     }
 
     @PostConstruct
