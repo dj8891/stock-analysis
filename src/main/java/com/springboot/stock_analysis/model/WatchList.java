@@ -12,6 +12,9 @@ public class WatchList {
     @Column(name = "ticker")
     private String ticker;
 
+    @Column(name = "ip")
+    private String ip;
+
     public WatchList() {
 
     }
@@ -32,7 +35,16 @@ public class WatchList {
         this.ticker = ticker;
     }
 
-    public WatchList(String ticker) {
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public WatchList(String ticker, String ipAddress) {
         this.ticker = ticker;
+        this.ip = ipAddress;
     }
 }

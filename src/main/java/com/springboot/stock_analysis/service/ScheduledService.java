@@ -145,6 +145,7 @@ public class ScheduledService {
                 .retrieve()
                 .bodyToMono(JsonNode.class)
                 .onErrorResume( e -> {
+                    System.out.println("ERROR: Get All Tickers Failed:" + e.getMessage());
                     return Mono.empty();
                 })
                 .block();
@@ -162,6 +163,10 @@ public class ScheduledService {
                         .uri("/v2/aggs/ticker/{ticker}/range/1/year/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
                         .retrieve()
                         .bodyToMono(JsonNode.class)
+                        .onErrorResume(e -> {
+                            System.out.println("ERROR: Get One Stock Info Failed");
+                            return Mono.empty();
+                        })
                         .flatMap(response -> {
                             response.path("results").forEach(result -> {
                                 String year = CalculatorUtils.convertTimestampToDate(result.path("t").asLong());
@@ -193,6 +198,10 @@ public class ScheduledService {
                         .uri(tmpUri, ticker, apiKey)
                         .retrieve()
                         .bodyToMono(JsonNode.class)
+                        .onErrorResume(e -> {
+                            System.out.println("ERROR: Get One Financial Info Failed");
+                            return Mono.empty();
+                        })
                         .flatMap(financialData -> {
                             financialData.path("results").forEach(result -> {
                                 String year = result.path("fiscal_year").asText();
@@ -239,6 +248,10 @@ public class ScheduledService {
                                 .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
                                 .retrieve()
                                 .bodyToMono(JsonNode.class)
+                                .onErrorResume(e -> {
+                                    System.out.println("ERROR: Get Ticker Data By Ticker");
+                                    return Mono.empty();
+                                })
                                 .block();
                         if(tickerData != null)
                             addStock(ticker, "TTM", tickerData.path("ticker").path("day").path("vw").asDouble());

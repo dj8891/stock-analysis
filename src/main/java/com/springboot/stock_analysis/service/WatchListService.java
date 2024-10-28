@@ -34,12 +34,12 @@ public class WatchListService {
         this.calculatorUtils = calculatorUtils;
     }
 
-    public Optional<WatchList> getWatchByTicker(String ticker) {
-        return this.watchListRepository.findAllByTicker(ticker);
+    public Optional<WatchList> getWatchByTickerAndIp(String ticker, String ip) {
+        return this.watchListRepository.findByTickerAndIp(ticker, ip);
     }
 
-    public Mono<?> getALlData() {
-        List<WatchList> watchLists = this.watchListRepository.findAll();
+    public Mono<?> getALlData(List<WatchList> watchLists) {
+
         if(!watchLists.isEmpty()) {
             StringBuilder tickerListStr = new StringBuilder();
             int curYear = LocalDate.now().getYear() - 1;
@@ -117,7 +117,7 @@ public class WatchListService {
         return null;
     }
 
-    public List<WatchList> getTickerList() {
-        return this.watchListRepository.findAll();
+    public List<WatchList> getTickerList(String ipAddress) {
+        return this.watchListRepository.findAllByIp(ipAddress);
     }
 }

@@ -15,8 +15,8 @@ public class StockDetailService {
         this.watchListRepository = watchListRepository;
     }
 
-    public WatchList saveToWatchList(String ticker) {
-        WatchList watchList = new WatchList(ticker);
+    public WatchList saveToWatchList(String ticker, String ipAddress) {
+        WatchList watchList = new WatchList(ticker, ipAddress);
         return watchListRepository.save(watchList);
     }
 }
