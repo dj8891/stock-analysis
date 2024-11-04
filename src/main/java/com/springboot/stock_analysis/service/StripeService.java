@@ -111,6 +111,7 @@ public class StripeService {
         if(user.isPresent()) {
             User optionalUser = user.get();
             String customerId = optionalUser.getCusId();
+            System.out.println("customerId Error: " + customerId);
             if(customerId.isEmpty()) {
                 try {
                     CustomerCreateParams params = CustomerCreateParams.builder()
