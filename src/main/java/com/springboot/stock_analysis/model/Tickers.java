@@ -10,7 +10,10 @@ public class Tickers {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "short_name")
     private String shortName;
+
+    @Column(name = "full_name")
     private String fullName;
 
     public Tickers(String shortName, String fullName) {

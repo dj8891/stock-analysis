@@ -13,6 +13,10 @@ import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.repository.TickersRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -101,20 +105,20 @@ public class PolygonApiService {
     }
 
     public Mono<Map<String, Double>> getAllETFData() {
-        return webClient.get()
-                .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers=SPY,DIA,QQQ&apiKey={apiKey}", apiKey)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .map(value -> {
-                    Map<String, Double> returnValue = new HashMap<>();
-                    JsonNode tickers = value.path("tickers");
-                    for(JsonNode item: tickers) {
-                        String ticker = item.path("ticker").asText();
-                        double todaysChangePerc = item.path("todaysChangePerc").asDouble();
-                        returnValue.put(ticker, todaysChangePerc);
-                    }
-                    return returnValue;
-                });
+            return webClient.get()
+                    .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers=SPY,DIA,QQQ&apiKey={apiKey}", apiKey)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .map(value -> {
+                        Map<String, Double> returnValue = new HashMap<>();
+                        JsonNode tickers = value.path("tickers");
+                        for (JsonNode item : tickers) {
+                            String ticker = item.path("ticker").asText();
+                            double todaysChangePerc = item.path("todaysChangePerc").asDouble();
+                            returnValue.put(ticker, todaysChangePerc);
+                        }
+                        return returnValue;
+                    });
     }
 
     public List<PerformanceDTO> getPerformanceList() {
