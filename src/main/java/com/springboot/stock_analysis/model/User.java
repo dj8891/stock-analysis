@@ -31,7 +31,18 @@ public class User implements UserDetails {
     private String cusId;
 
     @Column(name = "plan_status")
-    private int planStatus;
+    private String planStatus;
+
+    @Column(name = "sub_id")
+    private String subId;
+
+    public String getSubId() {
+        return subId;
+    }
+
+    public void setSubId(String subId) {
+        this.subId = subId;
+    }
 
     public Long getId() {
         return id;
@@ -110,11 +121,11 @@ public class User implements UserDetails {
         this.cusId = cusId;
     }
 
-    public int getPlanStatus() {
+    public String getPlanStatus() {
         return planStatus;
     }
 
-    public void setPlanStatus(int planStatus) {
+    public void setPlanStatus(String planStatus) {
         this.planStatus = planStatus;
     }
 }

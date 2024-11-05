@@ -9,23 +9,24 @@ import com.springboot.stock_analysis.model.User;
 import com.springboot.stock_analysis.repository.UserRepository;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
+import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
 import com.stripe.model.Event;
+import com.stripe.model.Subscription;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.SubscriptionCancelParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -61,7 +62,7 @@ public class StripeService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
-    private String handleSubscriptionEvent(Event event, int status) throws JsonProcessingException {
+    private String handleSubscriptionEvent(Event event, String status) throws JsonProcessingException {
         String data = event.getData().toJson();
         ObjectMapper mapper = new ObjectMapper();
         JsonNode actualObj = mapper.readTree(data);
@@ -70,8 +71,19 @@ public class StripeService {
         if(user.isPresent()) {
             User optionalUser = user.get();
             optionalUser.setPlanStatus(status);
-            if(status == 1) optionalUser.setRole(RoleTypes.PREMIUM);
-            else if(status == 0) optionalUser.setRole(RoleTypes.USER);
+            if(status.equals("succeeded")) {
+                optionalUser.setRole(RoleTypes.PREMIUM);
+            } else if(status.equals("created"))  {
+                optionalUser.setRole(RoleTypes.PREMIUM);
+                String subId = actualObj.path("object").path("id").asText();
+                optionalUser.setSubId(subId);
+            }
+            else if(status.equals("cancelled")) {
+                optionalUser.setRole(RoleTypes.USER);
+                optionalUser.setSubId(null);
+            } else {
+                optionalUser.setRole(RoleTypes.USER);
+            }
             this.userRepository.save(optionalUser);
             this.updateSecurityContext(optionalUser);
             return "SUCCESS";
@@ -91,9 +103,12 @@ public class StripeService {
         }
 
         String response = switch (event.getType()) {
-            case "payment_intent.succeeded" -> this.handleSubscriptionEvent(event, 1);
-            case "payment_intent.payment_failed", "payment_intent.canceled" -> this.handleSubscriptionEvent(event, 0);
+            case "payment_intent.succeeded" -> this.handleSubscriptionEvent(event, "succeeded");
+            case "customer.subscription.deleted" -> this.handleSubscriptionEvent(event, "cancelled");
 //            case "customer.subscription.trial_will_end" -> this.handleSubscriptionEvent(event, 2);
+//            customer.subscription.deleted
+            case "customer.subscription.created" -> this.handleSubscriptionEvent(event, "created");
+            case "payment_intent.payment_failed" -> this.handleSubscriptionEvent(event, "failed");
             default -> {
                 System.out.println("Invalid event type: " + event.getType());
                 yield ("Unhandled Event Type: " + event.getType());
@@ -102,11 +117,18 @@ public class StripeService {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    public void cancelSubscription(String subId) throws StripeException {
+        SubscriptionCancelParams params = SubscriptionCancelParams.builder().build();
+
+        // Cancel the subscription
+        Subscription subscription = Subscription.retrieve(subId);
+        subscription.cancel(params);
+    }
+
     public Session createCheckoutSession(CheckoutRequestDto checkoutRequestDto, String email) throws Exception {
         String priceId = checkoutRequestDto.getPriceId();
         String successUrl = checkoutRequestDto.getSuccessUrl();
         String cancelUrl = checkoutRequestDto.getCancelUrl();
-        String plan = checkoutRequestDto.getPlan();
         Optional<User> user = this.userRepository.findByEmail(email);
         if(user.isPresent()) {
             User optionalUser = user.get();
@@ -124,34 +146,19 @@ public class StripeService {
                     return null;
                 }
             }
-            SessionCreateParams params;
-            if(plan.equals("free")) {
-                params = SessionCreateParams.builder()
-                        .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
-                        .setCustomer(customerId)
-                        .setSuccessUrl(successUrl)
-                        .setCancelUrl(cancelUrl)
-                        .setSubscriptionData(SessionCreateParams.SubscriptionData.builder()
-                                .setTrialPeriodDays(freeTrial).build())
-                        .addLineItem(
-                                SessionCreateParams.LineItem.builder()
-                                        .setQuantity(1L)
-                                        .setPrice(priceId)
-                                        .build()
-                        ).build();
-            } else {
-                params = SessionCreateParams.builder()
-                        .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
-                        .setCustomer(customerId)
-                        .setSuccessUrl(successUrl)
-                        .setCancelUrl(cancelUrl)
-                        .addLineItem(
-                                SessionCreateParams.LineItem.builder()
-                                        .setQuantity(1L)
-                                        .setPrice(priceId)
-                                        .build()
-                        ).build();
-            }
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                    .setCustomer(customerId)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .setSubscriptionData(SessionCreateParams.SubscriptionData.builder()
+                            .setTrialPeriodDays(freeTrial).build())
+                    .addLineItem(
+                            SessionCreateParams.LineItem.builder()
+                                    .setQuantity(1L)
+                                    .setPrice(priceId)
+                                    .build()
+                    ).build();
 
             return Session.create(params);
         } else {

@@ -7,6 +7,7 @@ import com.springboot.stock_analysis.repository.UserRepository;
 import com.springboot.stock_analysis.service.JwtService;
 import com.springboot.stock_analysis.service.StripeService;
 import com.stripe.exception.SignatureVerificationException;
+import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
@@ -50,5 +51,15 @@ public class PaymentController {
         String jwt = token.substring(7);
         String email = jwtService.extractEamil(jwt);
         return ResponseEntity.ok(this.userRepository.findByEmail(email).orElseThrow());
+    }
+
+    @DeleteMapping("/cancel-subscription/{subId}")
+    public ResponseEntity<String> cancelSubscription(@PathVariable String subId) throws StripeException {
+        try {
+            stripeService.cancelSubscription(subId);
+            return ResponseEntity.ok("success");
+        } catch (StripeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Not Found Such Subscription");
+        }
     }
 }
