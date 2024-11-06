@@ -48,7 +48,7 @@ public class StripeService {
 
     private void updateSecurityContext(User user) {
         UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
+                user.getEmail(),
                 user.getPassword(),
                 user.getAuthorities()
         );
