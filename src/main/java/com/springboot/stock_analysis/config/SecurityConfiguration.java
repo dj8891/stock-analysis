@@ -36,8 +36,8 @@ public class SecurityConfiguration {
         .cors(httpSecurityCorsConfigurer -> httpSecurityCorsConfigurer.configurationSource(corsConfigurationSource()))
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> {
-              auth.requestMatchers("/index.html", "/ads.txt", "/assets/**", "/",  "/images/**", "/auth/**", "/payment/webhook", "/pdf/**").permitAll();
-              auth.requestMatchers("/polygon/**").hasAnyAuthority(String.valueOf(RoleTypes.PREMIUM));
+              auth.requestMatchers("/index.html", "/ads.txt", "/assets/**", "/", "/login", "/images/**", "/auth/**", "/payment/webhook", "/pdf/**").permitAll();
+              auth.requestMatchers("/polygon/**", "/watchlist/**").hasAnyAuthority(String.valueOf(RoleTypes.PREMIUM));
               auth.anyRequest().authenticated();
             }
         )

@@ -6,6 +6,8 @@ import com.springboot.stock_analysis.model.WatchList;
 import com.springboot.stock_analysis.repository.WatchListRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -86,12 +88,12 @@ public class WatchListService {
                         returnValue.put("dailyGrowth", String.valueOf(totalChangePerc / watchLists.size()));
                         return returnValue;
                     });
+        } else {
+            return null;
         }
-        return null;
     }
 
-    public List<Map<String, String>> getNewsData() {
-        List<WatchList> watchLists = this.watchListRepository.findAll();
+    public List<Map<String, String>> getNewsData(List<WatchList> watchLists) {
         List<Map<String, String>> returnList = new ArrayList<>();
 
         int limit = switch (watchLists.size()) {
@@ -119,5 +121,14 @@ public class WatchListService {
 
     public List<WatchList> getTickerList(String ipAddress) {
         return this.watchListRepository.findAllByIp(ipAddress);
+    }
+
+    public ResponseEntity<String> deleteTicker(String ticker) {
+        try {
+            this.watchListRepository.deleteByTicker(ticker);
+            return ResponseEntity.ok("Successfully deleted ticker: " + ticker);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 }

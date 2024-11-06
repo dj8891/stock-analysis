@@ -102,7 +102,7 @@ public class StripeService {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Webhook error: " + e.getMessage());
         }
 
-        String response = switch (event.getType()) {
+          String response = switch (event.getType()) {
             case "payment_intent.succeeded" -> this.handleSubscriptionEvent(event, "succeeded");
             case "customer.subscription.deleted" -> this.handleSubscriptionEvent(event, "cancelled");
 //            case "customer.subscription.trial_will_end" -> this.handleSubscriptionEvent(event, 2);

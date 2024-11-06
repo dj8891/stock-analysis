@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface WatchListRepository extends JpaRepository<WatchList, Long> {
     List<WatchList> findAllByIp(String ip);
     Optional<WatchList> findByTickerAndIp(String ticker, String ip);
+    WatchList findByTicker(String ticker);
+    void deleteByTicker(String ticker);
 }
 
 

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@CrossOrigin
+@CrossOrigin("*")
 @RequestMapping("/watchlist")
 public class WatchListController {
 
@@ -31,18 +31,19 @@ public class WatchListController {
     }
 
     @PostMapping("/data")
-    public Mono<ResponseEntity<?>> getAllData(@RequestBody List<WatchList> watchLists) {
+    public ResponseEntity<?> getAllData(@RequestBody List<WatchList> watchLists) {
         if (this.watchListService.getALlData(watchLists) != null) {
-            return this.watchListService.getALlData(watchLists).map(ResponseEntity::ok);
+            return this.watchListService.getALlData(watchLists).map(ResponseEntity::ok)
+                    .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null)).block(); // Handle errors
         }
         else {
-            return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database Error"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database Error");
         }
     }
-    @GetMapping("/news")
-    public ResponseEntity<?> getNewsData() {
-        if(this.watchListService.getNewsData() != null) {
-            return ResponseEntity.ok(this.watchListService.getNewsData());
+    @PostMapping("/news")
+    public ResponseEntity<?> getNewsData(@RequestBody List<WatchList> watchLists) {
+        if(this.watchListService.getNewsData(watchLists) != null) {
+            return ResponseEntity.ok(this.watchListService.getNewsData(watchLists));
         } else {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Database Error");
         }
@@ -55,5 +56,10 @@ public class WatchListController {
             ipAddress = request.getRemoteAddr();
         } else ipAddress = ipAddress.split(",")[0].trim();
         return ResponseEntity.ok(this.watchListService.getTickerList(ipAddress));
+    }
+
+    @DeleteMapping("/delete/{ticker}")
+    public ResponseEntity<String> deleteTicker(@PathVariable String ticker) {
+        return this.watchListService.deleteTicker(ticker);
     }
 }
