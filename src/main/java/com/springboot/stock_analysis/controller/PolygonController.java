@@ -71,4 +71,13 @@ public class PolygonController {
     public ResponseEntity<?> getTest() {
         return ResponseEntity.ok(polygonApiService.getTest());
     }
+
+    @GetMapping("/tickers/{ticker}")
+    public ResponseEntity<?> getTickers(@PathVariable String ticker) {
+        try {
+            return ResponseEntity.ok(this.polygonApiService.getTickerList(ticker));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
 }

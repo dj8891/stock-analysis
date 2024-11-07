@@ -106,7 +106,7 @@ public class PolygonApiService {
 
     public Mono<Map<String, Double>> getAllETFData() {
             return webClient.get()
-                    .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers=SPY,DIA,QQQ&apiKey={apiKey}", apiKey)
+                    .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers=SPY,DIA,QQQ,IWM&apiKey={apiKey}", apiKey)
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .map(value -> {
@@ -348,5 +348,9 @@ public class PolygonApiService {
                 .map(val -> {
                     return val.path("results");
                 });
+    }
+
+    public List<Tickers> getTickerList(String ticker) {
+        return this.tickersRepository.findByShortNameAndFullName(ticker);
     }
 }
