@@ -16,6 +16,6 @@ public interface TickersRepository extends JpaRepository<Tickers, Long> {
     boolean existsByShortName(String shortName);
     Optional<Tickers> findByShortName(String ticker);
 
-    @Query("SELECT e FROM Tickers e WHERE e.shortName LIKE %:ticker% OR e.fullName LIKE %:ticker% ORDER BY e.shortName ASC LIMIT 5")
+    @Query("SELECT e FROM Tickers e WHERE e.shortName LIKE :ticker% OR e.fullName LIKE :ticker% ORDER BY e.shortName ASC LIMIT 5")
     List<Tickers> findByShortNameAndFullName(@Param("ticker") String ticker);
 }
