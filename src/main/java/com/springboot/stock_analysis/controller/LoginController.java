@@ -24,7 +24,7 @@ public class LoginController {
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody User user) {
-        return ResponseEntity.ok(authenticationService.register(user));
+        return authenticationService.register(user);
     }
 
     @PostMapping(path = "/login")
