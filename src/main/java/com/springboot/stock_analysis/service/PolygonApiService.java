@@ -340,9 +340,12 @@ public class PolygonApiService {
             case "5-Y" -> curDate.minusYears(5);
             default -> LocalDate.of(2000, 1, 1);
         };
-
+        String timespan = "day";
+        if(date.equals("1-D") || date.equals("5-D") || date.equals("1-M")) {
+            timespan = "hour";
+        }
         return webClient.get()
-                .uri("/v2/aggs/ticker/{ticker}/range/1/day/{from}/{to}?sort=asc&limit=50000&apiKey={apiKey}", ticker, destDate, curDate, apiKey)
+                .uri("/v2/aggs/ticker/{ticker}/range/1/{timespan}/{from}/{to}?sort=asc&limit=50000&apiKey={apiKey}", ticker, timespan, destDate, curDate, apiKey)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
                 .map(val -> {

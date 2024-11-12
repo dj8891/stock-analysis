@@ -256,7 +256,7 @@ public class CalculatorUtils {
         double pe = stockPrice / epsPrice;
         int valueEvaluation = 0;
 
-        if(startStocks.getEps() == 0) {
+        if(Double.isInfinite(peg) || Double.isNaN(peg)) {
             if(pe < 15) return 8;
             if(pe > 15 && pe < 30) return 7;
             if(pe > 30 && pe < 50) return 4;
@@ -284,7 +284,6 @@ public class CalculatorUtils {
                 valueEvaluation = 10;
             }
         }
-
         return valueEvaluation;
     }
 
