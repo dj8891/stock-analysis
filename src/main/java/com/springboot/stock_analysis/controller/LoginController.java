@@ -16,10 +16,12 @@ public class LoginController {
 
     private final AuthenticationService authenticationService;
     private final JwtService jwtService;
+    private final UserService userService;
     public LoginController(AuthenticationService
-                           authenticationService, JwtService jwtService) {
+                           authenticationService, JwtService jwtService, UserService userService) {
         this.authenticationService = authenticationService;
         this.jwtService = jwtService;
+        this.userService = userService;
     }
 
     @PostMapping("/register")
@@ -42,5 +44,21 @@ public class LoginController {
     public ResponseEntity<String> logout() {
         SecurityContextHolder.getContext().setAuthentication(null);
         return ResponseEntity.ok("Successfully logged out");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestParam String email) {
+        userService.generatePasswordResetToken(email);
+        return ResponseEntity.ok("Password reset link sent to your email");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestParam("token") String token, @RequestParam("newPassword") String newPassword) {
+        boolean result = userService.resetPassword(token, newPassword);
+        if (result) {
+            return ResponseEntity.ok("Password has been reset successfully");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid or expired token");
+        }
     }
 }
