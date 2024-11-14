@@ -57,12 +57,18 @@ public class UserService implements UserDetailsService {
 
     public boolean resetPassword(String token, String newPassword) {
         Optional<PasswordResetToken> resetTokenOptional = passwordResetTokenRepository.findByToken(token);
-        if (resetTokenOptional.isPresent() && !resetTokenOptional.get().isExpired()) {
-            User user = resetTokenOptional.get().getUser();
-            user.setPassword(passwordEncoder.encode(newPassword));
-            userRepository.save(user);
-            passwordResetTokenRepository.delete(resetTokenOptional.get()); // Invalidate the token
-            return true;
+        if (resetTokenOptional.isPresent()) {
+            if(!resetTokenOptional.get().isExpired()) {
+                User user = resetTokenOptional.get().getUser();
+                user.setPassword(passwordEncoder.encode(newPassword));
+                userRepository.save(user);
+                passwordResetTokenRepository.delete(resetTokenOptional.get()); // Invalidate the token
+                return true;
+            }
+            else {
+                passwordResetTokenRepository.delete(resetTokenOptional.get()); // Invalidate the token
+                return false;
+            }
         }
         return false;
     }
