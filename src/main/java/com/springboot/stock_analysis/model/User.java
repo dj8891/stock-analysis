@@ -7,6 +7,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.management.relation.Role;
+import java.time.LocalDate;
 import java.util.*;
 
 @Entity
@@ -35,6 +36,18 @@ public class User implements UserDetails {
 
     @Column(name = "sub_id")
     private String subId;
+
+    @Column(name = "expiryDate")
+    private LocalDate expiryDate;
+
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public User setExpiryDate(LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
+        return this;
+    }
 
     public String getSubId() {
         return subId;

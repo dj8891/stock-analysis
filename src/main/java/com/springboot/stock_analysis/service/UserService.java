@@ -1,5 +1,6 @@
 package com.springboot.stock_analysis.service;
 
+import com.springboot.stock_analysis.enums.RoleTypes;
 import com.springboot.stock_analysis.model.PasswordResetToken;
 import com.springboot.stock_analysis.model.User;
 import com.springboot.stock_analysis.repository.PasswordResetTokenRepository;
@@ -11,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +25,7 @@ public class UserService implements UserDetailsService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+
     public UserService(UserRepository userRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
                        PasswordEncoder passwordEncoder,
@@ -58,18 +61,28 @@ public class UserService implements UserDetailsService {
     public boolean resetPassword(String token, String newPassword) {
         Optional<PasswordResetToken> resetTokenOptional = passwordResetTokenRepository.findByToken(token);
         if (resetTokenOptional.isPresent()) {
-            if(!resetTokenOptional.get().isExpired()) {
+            if (!resetTokenOptional.get().isExpired()) {
                 User user = resetTokenOptional.get().getUser();
                 user.setPassword(passwordEncoder.encode(newPassword));
                 userRepository.save(user);
                 passwordResetTokenRepository.delete(resetTokenOptional.get()); // Invalidate the token
                 return true;
-            }
-            else {
+            } else {
                 passwordResetTokenRepository.delete(resetTokenOptional.get()); // Invalidate the token
                 return false;
             }
         }
         return false;
+    }
+
+    public boolean checkPermission(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("User not found with email:" + email));
+        if (user.getRole() == RoleTypes.FREE && Optional.ofNullable(user.getExpiryDate())
+                .map(expiryDate -> expiryDate.isBefore(LocalDate.now()))
+                .orElse(false)) {
+            user.setRole(RoleTypes.USER);
+            userRepository.save(user);
+            return true;
+        } else return false;
     }
 }

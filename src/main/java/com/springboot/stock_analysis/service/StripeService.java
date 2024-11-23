@@ -74,7 +74,7 @@ public class StripeService {
             if(status.equals("succeeded")) {
                 optionalUser.setRole(RoleTypes.PREMIUM);
             } else if(status.equals("created"))  {
-                optionalUser.setRole(RoleTypes.PREMIUM);
+//                optionalUser.setRole(RoleTypes.PREMIUM);
                 String subId = actualObj.path("object").path("id").asText();
                 optionalUser.setSubId(subId);
             }
@@ -151,8 +151,8 @@ public class StripeService {
                     .setCustomer(customerId)
                     .setSuccessUrl(successUrl)
                     .setCancelUrl(cancelUrl)
-                    .setSubscriptionData(SessionCreateParams.SubscriptionData.builder()
-                            .setTrialPeriodDays(freeTrial).build())
+//                    .setSubscriptionData(SessionCreateParams.SubscriptionData.builder()
+//                            .setTrialPeriodDays(freeTrial).build())
                     .addLineItem(
                             SessionCreateParams.LineItem.builder()
                                     .setQuantity(1L)
