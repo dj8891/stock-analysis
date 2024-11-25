@@ -84,7 +84,8 @@ public class PolygonApiService {
         if(!this.allStocks.isEmpty()) {
             for(String ticker: this.allTickers) {
                 double stockGrowth = this.calculatorUtils.overallGrowth(this.allStocks, ticker);
-                if(Double.isNaN(stockGrowth) || Double.isInfinite(stockGrowth)) continue;;
+                if(Double.isNaN(stockGrowth) || Double.isInfinite(stockGrowth)) continue;
+                if(this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getStock() < 10) continue;
                 RatedStockDTO ratedStockDTO = new RatedStockDTO(ticker, stockGrowth);
                 ratedStocks.add(ratedStockDTO);
             }
@@ -317,11 +318,17 @@ public class PolygonApiService {
                         Stocks lastStocks = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear));
 
                         double peg = 0;
+
+                        double epsPrice = lastStocks.getEps();
+                        double stockP = lastStocks.getStock();
+                        double pe = epsPrice == 0 ? 0 : stockP / epsPrice;
+
                         if(startStocks.getEps() != 0)
                          peg = this.calculatorUtils.cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
                         returnValue.put("revenueGrowthRate", String.valueOf(revenueGrowth));
                         returnValue.put("stockGrowthRate", String.valueOf(stockGrowth));
                         returnValue.put("pegRatio", String.valueOf(peg));
+                        returnValue.put("peRatio", String.valueOf(pe));
                         return returnValue;
                     });
         }

@@ -77,7 +77,7 @@ public class UserService implements UserDetailsService {
 
     public boolean checkPermission(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("User not found with email:" + email));
-        if (user.getRole() == RoleTypes.FREE && Optional.ofNullable(user.getExpiryDate())
+        if (user.getRole() != RoleTypes.PREMIUM && Optional.ofNullable(user.getExpiryDate())
                 .map(expiryDate -> expiryDate.isBefore(LocalDate.now()))
                 .orElse(false)) {
             user.setRole(RoleTypes.USER);

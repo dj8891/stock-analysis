@@ -264,7 +264,7 @@ public class CalculatorUtils {
             if(pe > 100) return 2;
         } else {
             if(epsGrowth < 0.0 && peg > 10 ) valueEvaluation = 1;
-            if(epsGrowth < 0.0 ) valueEvaluation = 2;
+            if(epsGrowth < 0.0 || (epsGrowth > 0.0 && peg > 10) ) valueEvaluation = 2;
             if(epsGrowth > 0 && peg < 10 && peg > 8) valueEvaluation = 3;
             if(epsGrowth > 0 && peg < 8 && peg > 5) valueEvaluation = 4;
             if(epsGrowth > 0 && peg < 5 && peg > 2) valueEvaluation = 5;
