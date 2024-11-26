@@ -373,7 +373,7 @@ public class ScheduledService {
     @PostConstruct
     public void onStartup() {
         getInfo();
-        getAllTickers();
+//        getAllTickers();
         runDailyTask();
     }
 }
