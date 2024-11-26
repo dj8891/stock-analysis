@@ -6,6 +6,7 @@ import com.springboot.stock_analysis.repository.TickersRepository;
 import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Optional;
@@ -139,19 +141,15 @@ public class ScheduledService {
                 .subscribe();
     }
 
-    public JsonNode getAllActiveTickers() {
-        JsonNode tickers = webClient.get()
+    public Mono<JsonNode> getAllActiveTickers() {
+        return webClient.get()
                 .uri("/v2/snapshot/locale/us/markets/stocks/tickers?apiKey={apiKey}", apiKey)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
-                .onErrorResume( e -> {
-                    System.out.println("ERROR: Get All Tickers Failed:" + e.getMessage());
+                .onErrorResume(e -> {
+                    System.out.println("ERROR: Get All Tickers Failed: " + e.getMessage());
                     return Mono.empty();
-                })
-                .block();
-        if(tickers != null)
-            return tickers.path("tickers");
-        else return null;
+                });
     }
 
     public void asyncGetOneStockInfo(String ticker) {
@@ -221,100 +219,137 @@ public class ScheduledService {
     }
 
     public void getInfo() {
+        // Use a CompletableFuture to execute the async logic
         CompletableFuture.runAsync(() -> {
-            try {
-                JsonNode allTickers = getAllActiveTickers();
+            getAllActiveTickers()
+                    .flatMap(tickers -> {
+                        if (tickers != null && tickers.has("tickers")) {
+                            JsonNode allTickers = tickers.path("tickers");
+                            System.out.println("LOG: Getting info started!");
+                            return Flux.fromIterable(allTickers)
+                                    .index()  // Get the index to control batching
+                                    .flatMap(indexed -> {
+                                        int i = Math.toIntExact(indexed.getT1());
+                                        JsonNode tickerData = indexed.getT2();
+                                        String ticker = tickerData.path("ticker").asText();
 
-                System.out.println("LOG: Getting info started!");
-                if(allTickers != null) {
-                    for (int i = 0; i < allTickers.size(); i++) {
-                        String ticker = allTickers.get(i).path("ticker").asText();
+                                        addStock(ticker, "TTM", tickerData.path("day").path("vw").asDouble());
+                                        asyncGetOneFinancialInfo(ticker, true);
 
-                        addStock(ticker, "TTM", allTickers.get(i).path("day").path("vw").asDouble());
-                        asyncGetOneFinancialInfo(ticker, true);
-                        if (i > 0 && i % 50 == 0) Thread.sleep(500);
-                    }
+                                        // Introduce a non-blocking delay after every 50 tickers
+                                        if (i > 0 && i % 50 == 0) {
+                                            return Mono.delay(Duration.ofMillis(500));
+                                        }
+                                        return Mono.empty();
+                                    })
+                                    .then(Mono.fromRunnable(() -> {
+                                        System.out.println("LOG: Getting Stock TTM Completed!");
+                                        System.out.println("LOG: Getting Financial Info Completed!");
+                                    }));
+                        } else {
+                            // If tickers can't be fetched, fall back to using the local repository
+                            System.out.println("LOG: CAN'T GET TICKERS");
+                            return Flux.fromIterable(tickersRepository.findAll())
+                                    .index()
+                                    .flatMap(indexed -> {
+                                        int i = Math.toIntExact(indexed.getT1());
+                                        Tickers tickerEntity = indexed.getT2();
+                                        String ticker = tickerEntity.getShortName();
 
-                    System.out.println("LOG: Getting Stock TTM Completed!");
+                                        asyncGetOneFinancialInfo(ticker, true);
 
-                    System.out.println("LOG: Getting Financial Info Completed!");
-                } else {
-                    System.out.println("LOG: CAN'T GET TICKERS");
-                    List<Tickers> tickersList = this.tickersRepository.findAll();
-                    for(int i = 0 ; i < tickersList.size(); i++) {
-                        String ticker = tickersList.get(i).getShortName();
-                        asyncGetOneFinancialInfo(ticker, true);
-                        JsonNode tickerData = webClient.get()
-                                .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
-                                .retrieve()
-                                .bodyToMono(JsonNode.class)
-                                .onErrorResume(e -> {
-                                    System.out.println("ERROR: Get Ticker Data By Ticker");
-                                    return Mono.empty();
-                                })
-                                .block();
-                        if(tickerData != null)
-                            addStock(ticker, "TTM", tickerData.path("ticker").path("day").path("vw").asDouble());
-                        else System.out.println("ERROR: Ticker Data Get Failed!");
-                        if (i > 0 && i % 50 == 0) {
-                            try {
-                                Thread.sleep(5000);
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt(); // Restore interrupted status
-                                System.out.println("Thread sleep interrupted: " + e.getMessage());
-                            }
+                                        // Make individual requests for each ticker
+                                        return webClient.get()
+                                                .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
+                                                .retrieve()
+                                                .bodyToMono(JsonNode.class)
+                                                .onErrorResume(e -> {
+                                                    System.out.println("ERROR: Get Ticker Data By Ticker");
+                                                    return Mono.empty();
+                                                })
+                                                .flatMap(tickerData -> {
+                                                    if (tickerData != null) {
+                                                        addStock(ticker, "TTM", tickerData.path("ticker").path("day").path("vw").asDouble());
+                                                    } else {
+                                                        System.out.println("ERROR: Ticker Data Get Failed!");
+                                                    }
+
+                                                    // Introduce a longer delay after every 50 tickers
+                                                    if (i > 0 && i % 50 == 0) {
+                                                        return Mono.delay(Duration.ofMillis(5000));
+                                                    }
+                                                    return Mono.empty();
+                                                });
+                                    })
+                                    .then(Mono.fromRunnable(() -> {
+                                        System.out.println("LOG: Getting Financial Info Completed!");
+                                    }));
                         }
-                    }
-                }
+                    })
+                    .doOnError(e -> System.out.println("ERROR (getInfo): " + e.getMessage()))
+                    .subscribe(); // Start the reactive flow asynchronously
+        });
+    }
 
-            } catch (Exception e) {
-                System.out.println("ERROR (getInfo): " + e.getMessage());
-            }
-        }).thenRun(this::getInfo);
-
+    public void runDailyTask() {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
         Runnable dailyTask = () -> CompletableFuture.runAsync(() -> {
             System.out.println("GET Annual Data Started!");
             try {
-                JsonNode allTickers = getAllActiveTickers();
-                if(allTickers != null) {
-                    for (int i = 0; i < allTickers.size(); i++) {
-                        String ticker = allTickers.get(i).path("ticker").asText();
-                        asyncGetOneStockInfo(ticker);
-                        asyncGetOneFinancialInfo(ticker, false);
-                        if (i > 0 && i % 50 == 0) {
-                            try {
-                                Thread.sleep(5000);
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt(); // Restore interrupted status
-                                System.out.println("Thread sleep interrupted: " + e.getMessage());
+                getAllActiveTickers()
+                        .flatMap(tickers -> {
+                            if (tickers != null && tickers.has("tickers")) {
+                                JsonNode allTickers = tickers.path("tickers");
+                                return Flux.fromIterable(allTickers)
+                                        .index()  // Add index to control batching
+                                        .flatMap(indexed -> {
+                                            int i = Math.toIntExact(indexed.getT1());
+                                            JsonNode tickerData = indexed.getT2();
+                                            String ticker = tickerData.path("ticker").asText();
+
+                                            asyncGetOneStockInfo(ticker);
+                                            asyncGetOneFinancialInfo(ticker, false);
+
+                                            // Add a non-blocking delay after every 50 tickers
+                                            if (i > 0 && i % 50 == 0) {
+                                                return Mono.delay(Duration.ofMillis(5000));
+                                            }
+                                            return Mono.empty();
+                                        })
+                                        .then(Mono.fromRunnable(() -> {
+                                            System.out.println("GET Annual Data completed!");
+                                        }));
+                            } else {
+                                System.out.println("LOG: CAN'T GET TICKERS");
+                                return Flux.fromIterable(tickersRepository.findAll())
+                                        .index()
+                                        .flatMap(indexed -> {
+                                            int i = Math.toIntExact(indexed.getT1());
+                                            Tickers tickerEntity = indexed.getT2();
+                                            String ticker = tickerEntity.getShortName();
+
+                                            asyncGetOneStockInfo(ticker);
+                                            asyncGetOneFinancialInfo(ticker, false);
+
+                                            // Delay after every 50 tickers
+                                            if (i > 0 && i % 50 == 0) {
+                                                return Mono.delay(Duration.ofMillis(5000));
+                                            }
+                                            return Mono.empty();
+                                        })
+                                        .then(Mono.fromRunnable(() -> {
+                                            System.out.println("GET Annual Data completed!");
+                                        }));
                             }
-                        }
-                    }
-                } else {
-                    System.out.println("LOG: CAN'T GET TICKERS");
-                    List<Tickers> tickersList = this.tickersRepository.findAll();
-                    for(int i = 0 ; i < tickersList.size(); i++) {
-                        String ticker = tickersList.get(i).getShortName();
-                        asyncGetOneStockInfo(ticker);
-                        asyncGetOneFinancialInfo(ticker, false);
-                        if (i > 0 && i % 50 == 0) {
-                            try {
-                                Thread.sleep(5000);
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt(); // Restore interrupted status
-                                System.out.println("Thread sleep interrupted: " + e.getMessage());
-                            }
-                        }
-                    }
-                }
+                        })
+                        .doOnError(e -> System.out.println("ERROR: GET Annual Data " + e.getMessage()))
+                        .subscribe();
             } catch (Exception e) {
                 System.out.println("ERROR: GET Annual Data " + e.getMessage());
-            } finally {
-                System.out.println("GET Annual Data completed!");
             }
         });
+
         // Calculate the initial delay until the first execution
         long period = 24 * 60 * 60; // 24 hours in seconds
 
@@ -326,5 +361,6 @@ public class ScheduledService {
     public void onStartup() {
         getInfo();
         getAllTickers();
+        runDailyTask();
     }
 }
