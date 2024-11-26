@@ -1,4 +1,4 @@
-package com.springboot.stock_analysis.config;
+package com.springboot.stock_analysis.controller;
 
 import com.springboot.stock_analysis.model.PromoCode;
 import com.springboot.stock_analysis.service.PromoService;
