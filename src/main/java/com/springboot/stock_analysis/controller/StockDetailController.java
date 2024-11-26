@@ -1,5 +1,6 @@
 package com.springboot.stock_analysis.controller;
 
+import com.springboot.stock_analysis.service.JwtService;
 import com.springboot.stock_analysis.service.StockDetailService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -11,16 +12,16 @@ import org.springframework.web.bind.annotation.*;
 public class StockDetailController {
 
     private final StockDetailService stockDetailService;
-    public StockDetailController(StockDetailService stockDetailService) {
+    private final JwtService jwtService;
+    public StockDetailController(StockDetailService stockDetailService, JwtService jwtService) {
         this.stockDetailService = stockDetailService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/save")
-    public ResponseEntity<Object> getStockDetail(@RequestParam("ticker") String ticker, HttpServletRequest request) {
-        String ipAddress = request.getHeader("X-Forwarded-For");
-        if(ipAddress == null || ipAddress.isEmpty()) {
-            ipAddress = request.getRemoteAddr();
-        } else ipAddress = ipAddress.split(",")[0].trim();
-        return ResponseEntity.ok(stockDetailService.saveToWatchList(ticker, ipAddress));
+    public ResponseEntity<Object> getStockDetail(@RequestParam("ticker") String ticker, @RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        String email = jwtService.extractEamil(jwt);
+        return ResponseEntity.ok(stockDetailService.saveToWatchList(ticker, email));
     }
 }

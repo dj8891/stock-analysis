@@ -11,8 +11,8 @@ import java.util.Optional;
 @Repository
 @Transactional
 public interface WatchListRepository extends JpaRepository<WatchList, Long> {
-    List<WatchList> findAllByIp(String ip);
-    Optional<WatchList> findByTickerAndIp(String ticker, String ip);
+    List<WatchList> findAllByEmail(String email);
+    Optional<WatchList> findByTickerAndEmail(String ticker, String email);
     WatchList findByTicker(String ticker);
     void deleteByTicker(String ticker);
 }

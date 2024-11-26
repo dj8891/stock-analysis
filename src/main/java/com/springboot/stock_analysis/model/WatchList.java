@@ -12,8 +12,8 @@ public class WatchList {
     @Column(name = "ticker")
     private String ticker;
 
-    @Column(name = "ip")
-    private String ip;
+    @Column(name = "email", nullable = false)
+    private String email;
 
     public WatchList() {
 
@@ -35,16 +35,16 @@ public class WatchList {
         this.ticker = ticker;
     }
 
-    public String getIp() {
-        return ip;
+    public String getEmail() {
+        return email;
     }
 
-    public void setIp(String ip) {
-        this.ip = ip;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
-    public WatchList(String ticker, String ipAddress) {
+    public WatchList(String ticker, String email) {
         this.ticker = ticker;
-        this.ip = ipAddress;
+        this.email = email;
     }
 }

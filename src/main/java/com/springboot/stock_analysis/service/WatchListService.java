@@ -36,8 +36,8 @@ public class WatchListService {
         this.calculatorUtils = calculatorUtils;
     }
 
-    public Optional<WatchList> getWatchByTickerAndIp(String ticker, String ip) {
-        return this.watchListRepository.findByTickerAndIp(ticker, ip);
+    public Optional<WatchList> getWatchByTickerAndEmail(String ticker, String email) {
+        return this.watchListRepository.findByTickerAndEmail(ticker, email);
     }
 
     public Mono<?> getALlData(List<WatchList> watchLists) {
@@ -119,8 +119,8 @@ public class WatchListService {
         return null;
     }
 
-    public List<WatchList> getTickerList(String ipAddress) {
-        return this.watchListRepository.findAllByIp(ipAddress);
+    public List<WatchList> getTickerList(String email) {
+        return this.watchListRepository.findAllByEmail(email);
     }
 
     public ResponseEntity<String> deleteTicker(String ticker) {

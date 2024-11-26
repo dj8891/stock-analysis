@@ -30,7 +30,7 @@ public class PaymentController {
     @PostMapping("/subscribe")
     public ResponseEntity<String> createCheckoutSession(@RequestBody CheckoutRequestDto checkoutRequestDto,
                                          @RequestHeader("Authorization") String token) throws Exception {
-            String jwt = token.substring(7);
+        String jwt = token.substring(7);
         String email = jwtService.extractEamil(jwt);
         Session session = stripeService.createCheckoutSession(checkoutRequestDto, email);
         if(session != null) return ResponseEntity.ok(session.getId());

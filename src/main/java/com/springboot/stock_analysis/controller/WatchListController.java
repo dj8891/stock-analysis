@@ -1,6 +1,7 @@
 package com.springboot.stock_analysis.controller;
 
 import com.springboot.stock_analysis.model.WatchList;
+import com.springboot.stock_analysis.service.JwtService;
 import com.springboot.stock_analysis.service.WatchListService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -17,16 +18,16 @@ import java.util.Optional;
 public class WatchListController {
 
     private final WatchListService watchListService;
-    public WatchListController(WatchListService watchListService) {
+    private final JwtService jwtService;
+    public WatchListController(WatchListService watchListService, JwtService jwtService) {
         this.watchListService = watchListService;
+        this.jwtService = jwtService;
     }
     @GetMapping("/list/{ticker}")
-    public ResponseEntity<WatchList> getWatchList(@PathVariable String ticker, HttpServletRequest request) {
-        String ipAddress = request.getHeader("X-Forwarded-For");
-        if(ipAddress == null || ipAddress.isEmpty()) {
-            ipAddress = request.getRemoteAddr();
-        } else ipAddress = ipAddress.split(",")[0].trim();
-        Optional<WatchList> watchList = this.watchListService.getWatchByTickerAndIp(ticker, ipAddress);
+    public ResponseEntity<WatchList> getWatchList(@PathVariable String ticker, @RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        String email = jwtService.extractEamil(jwt);
+        Optional<WatchList> watchList = this.watchListService.getWatchByTickerAndEmail(ticker, email);
         return ResponseEntity.ok(watchList.orElse(null));
     }
 
@@ -50,12 +51,10 @@ public class WatchListController {
     }
 
     @GetMapping("/tickers")
-    public ResponseEntity<List<WatchList>> getTickerList(HttpServletRequest request) {
-        String ipAddress = request.getHeader("X-Forwarded-For");
-        if(ipAddress == null || ipAddress.isEmpty()) {
-            ipAddress = request.getRemoteAddr();
-        } else ipAddress = ipAddress.split(",")[0].trim();
-        return ResponseEntity.ok(this.watchListService.getTickerList(ipAddress));
+    public ResponseEntity<List<WatchList>> getTickerList(@RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        String email = jwtService.extractEamil(jwt);
+        return ResponseEntity.ok(this.watchListService.getTickerList(email));
     }
 
     @DeleteMapping("/delete/{ticker}")
