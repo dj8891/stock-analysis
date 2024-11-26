@@ -126,6 +126,7 @@ public class ScheduledService {
         Mono.just("")
                 .expand(cursor -> this.fetchNewsWithCursor(cursor)
                         .flatMap(response -> {
+                            System.out.println("GET ALL TICKERS:_________________________" + cursor);
                             JsonNode results = response.path("results");
                             String nextUrl = response.path("next_url").asText();
                             for(JsonNode result: results) {
