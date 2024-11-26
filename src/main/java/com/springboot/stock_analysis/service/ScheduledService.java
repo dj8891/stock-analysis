@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.PrematureCloseException;
 import reactor.util.retry.Retry;
 
 import java.util.Optional;
@@ -107,10 +108,15 @@ public class ScheduledService {
                 .uri("/v3/reference/tickers?active=true&limit=1000&cursor={cursor}&apiKey={apiKey}", cursor, apiKey)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
-                .timeout(Duration.ofSeconds(30)) // Individual request timeout
-                .retryWhen(Retry.backoff(3, Duration.ofSeconds(5)))
+                .timeout(Duration.ofSeconds(60)) // Increased timeout
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(5))
+                        .filter(e -> e instanceof PrematureCloseException))
                 .onErrorResume(e -> {
-                    System.out.println("Error fetching cursor " + cursor + ": " + e.getMessage());
+                    if (e instanceof PrematureCloseException) {
+                        System.out.println("PrematureCloseException for cursor " + cursor + ": Retrying...");
+                    } else {
+                        System.out.println("Error fetching cursor " + cursor + ": " + e.getMessage());
+                    }
                     return Mono.empty(); // Gracefully handle errors
                 });
     }
@@ -373,7 +379,7 @@ public class ScheduledService {
     @PostConstruct
     public void onStartup() {
         getInfo();
-//        getAllTickers();
+        getAllTickers();
         runDailyTask();
     }
 }
