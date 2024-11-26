@@ -130,7 +130,9 @@ public class ScheduledService {
                             String nextUrl = response.path("next_url").asText();
                             for(JsonNode result: results) {
                                 String ticker = result.path("ticker").asText();
-                                String name = result.path("name").asText();
+                                String name = "";
+                                if(result.has("name"))
+                                    name = result.path("name").asText();
                                 addTicker(ticker, name);
                             }
                             // Stop fetching if no more pages or results are empty
