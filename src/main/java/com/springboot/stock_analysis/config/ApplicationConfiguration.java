@@ -30,13 +30,15 @@ public class ApplicationConfiguration {
     public WebClient webClient(WebClient.Builder builder) {
         ConnectionProvider connectionProvider = ConnectionProvider.builder("custom")
                 .maxIdleTime(Duration.ofSeconds(120)) // Set max idle time
-                .maxLifeTime(Duration.ofMinutes(5)) // Optional: set max lifetime for connections
+                .evictInBackground(Duration.ofSeconds(19))
+                // Optional: set max lifetime for connections
                 .build();
 
         // Create an HttpClient using the ConnectionProvider
         HttpClient httpClient = HttpClient.create(connectionProvider)
-                .option(ChannelOption.SO_KEEPALIVE, true);
-
+                .option(ChannelOption.SO_KEEPALIVE, true)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 20000) // Connection timeout (5 seconds)
+                .responseTimeout(Duration.ofSeconds(20));
         // Configure WebClient with the customized HttpClient
         return builder
                 .baseUrl(baseUrl)
