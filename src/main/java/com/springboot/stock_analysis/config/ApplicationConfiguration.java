@@ -2,6 +2,7 @@ package com.springboot.stock_analysis.config;
 
 import com.springboot.stock_analysis.repository.UserRepository;
 import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,8 +38,9 @@ public class ApplicationConfiguration {
         // Create an HttpClient using the ConnectionProvider
         HttpClient httpClient = HttpClient.create(connectionProvider)
                 .option(ChannelOption.SO_KEEPALIVE, true)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 20000) // Connection timeout (5 seconds)
-                .responseTimeout(Duration.ofSeconds(20));
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000) // Connection timeout (5 seconds)
+                .responseTimeout(Duration.ofSeconds(45))
+                .doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(30))); // Read timeout (30 seconds)
         // Configure WebClient with the customized HttpClient
         return builder
                 .baseUrl(baseUrl)
