@@ -252,7 +252,11 @@ public class ScheduledService {
                                     .then(Mono.fromRunnable(() -> {
                                         System.out.println("LOG: Getting Stock TTM Completed!");
                                         System.out.println("LOG: Getting Financial Info Completed!");
-                                    }));
+                                    }))
+                                    .onErrorResume(e -> {
+                                        System.out.println("LOG: ERROR____: " + e.getMessage());
+                                        return Mono.empty();
+                                    });
                         } else {
                             // If tickers can't be fetched, fall back to using the local repository
                             System.out.println("LOG: CAN'T GET TICKERS");
