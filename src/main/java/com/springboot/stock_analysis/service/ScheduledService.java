@@ -245,7 +245,6 @@ public class ScheduledService {
                                     .then(Mono.fromRunnable(() -> {
                                         System.out.println("LOG: Getting Stock TTM Completed!");
                                         System.out.println("LOG: Getting Financial Info Completed!");
-                                        this.getInfo();
                                     }));
                         } else {
                             // If tickers can't be fetched, fall back to using the local repository
@@ -284,10 +283,11 @@ public class ScheduledService {
                                     })
                                     .then(Mono.fromRunnable(() -> {
                                         System.out.println("LOG: Getting Financial Info Completed!");
-                                        this.getInfo();
                                     }));
                         }
                     })
+                    .then(Mono.delay(Duration.ofMinutes(30)))
+                    .doOnSuccess(ignored -> this.getInfo())
                     .doOnError(e -> System.out.println("ERROR (getInfo): " + e.getMessage()))
                     .subscribe(); // Start the reactive flow asynchronously
         });
