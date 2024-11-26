@@ -1,6 +1,7 @@
 package com.springboot.stock_analysis.config;
 
 import com.springboot.stock_analysis.repository.UserRepository;
+import io.netty.channel.ChannelOption;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,12 +29,13 @@ public class ApplicationConfiguration {
     @Bean
     public WebClient webClient(WebClient.Builder builder) {
         ConnectionProvider connectionProvider = ConnectionProvider.builder("custom")
-                .maxIdleTime(Duration.ofSeconds(45)) // Set max idle time
+                .maxIdleTime(Duration.ofSeconds(120)) // Set max idle time
                 .maxLifeTime(Duration.ofMinutes(5)) // Optional: set max lifetime for connections
                 .build();
 
         // Create an HttpClient using the ConnectionProvider
-        HttpClient httpClient = HttpClient.create(connectionProvider);
+        HttpClient httpClient = HttpClient.create(connectionProvider)
+                .option(ChannelOption.SO_KEEPALIVE, true);
 
         // Configure WebClient with the customized HttpClient
         return builder
