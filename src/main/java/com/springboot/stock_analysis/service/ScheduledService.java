@@ -6,6 +6,7 @@ import com.springboot.stock_analysis.repository.TickersRepository;
 import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 
+import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
@@ -126,33 +127,34 @@ public class ScheduledService {
         Mono.just("")
                 .expand(cursor -> this.fetchNewsWithCursor(cursor)
                         .flatMap(response -> {
-                            System.out.println("GET ALL TICKERS:_________________________" + cursor);
+                            System.out.println("Processing cursor: " + cursor);
                             JsonNode results = response.path("results");
                             String nextUrl = response.path("next_url").asText();
-                            for(JsonNode result: results) {
+
+                            for (JsonNode result : results) {
                                 String ticker = result.path("ticker").asText();
-                                String name = "";
-                                if(result.has("name"))
-                                    name = result.path("name").asText();
+                                String name = result.has("name") ? result.path("name").asText() : "";
                                 addTicker(ticker, name);
                             }
-                            // Stop fetching if no more pages or results are empty
+
                             if (nextUrl.isEmpty() || results.isEmpty()) {
                                 return Mono.empty();
                             }
 
-                            // Extract the next cursor
-                            List<String> urlParts = List.of(nextUrl.split("="));
-                            String nextCursor = urlParts.size() > 1 ? urlParts.get(1) : "";
+                            String nextCursor = "";
+                            try {
+                                nextCursor = URI.create(nextUrl).getQuery().split("cursor=")[1].split("&")[0];
+                            } catch (Exception e) {
+                                System.out.println("Failed to extract cursor: " + e.getMessage());
+                            }
 
-                            // Continue with the next cursor
                             return Mono.just(nextCursor);
                         })
                 )
                 .doOnComplete(() -> System.out.println("LOG: Getting all tickers completed!"))
                 .onErrorResume(e -> {
                     System.out.println("ERROR: Getting all tickers error - " + e.getMessage());
-                    return Mono.empty(); // Handle error gracefully
+                    return Mono.empty();
                 })
                 .subscribe();
     }
