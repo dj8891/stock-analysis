@@ -109,8 +109,10 @@ public class ScheduledService {
                 .uri("/v3/reference/tickers?active=true&limit=1000&cursor={cursor}&apiKey={apiKey}", cursor, apiKey)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
-                .timeout(Duration.ofSeconds(60)) // Increased timeout
-                .retryWhen(Retry.backoff(3, Duration.ofSeconds(5))
+                .timeout(Duration.ofSeconds(60))
+                .retryWhen(Retry.backoff(5, Duration.ofSeconds(5))
+                        .maxBackoff(Duration.ofSeconds(30))
+                        .jitter(0.5)
                         .filter(e -> e instanceof PrematureCloseException))
                 .onErrorResume(e -> {
                     if (e instanceof PrematureCloseException) {
@@ -118,7 +120,7 @@ public class ScheduledService {
                     } else {
                         System.out.println("Error fetching cursor " + cursor + ": " + e.getMessage());
                     }
-                    return Mono.empty(); // Gracefully handle errors
+                    return Mono.empty();
                 });
     }
 
@@ -126,6 +128,7 @@ public class ScheduledService {
         System.out.println("Getting All tickers started!");
         Mono.just("")
                 .expand(cursor -> this.fetchNewsWithCursor(cursor)
+                        .delaySubscription(Duration.ofMillis(500))
                         .flatMap(response -> {
                             System.out.println("Processing cursor: " + cursor);
                             JsonNode results = response.path("results");

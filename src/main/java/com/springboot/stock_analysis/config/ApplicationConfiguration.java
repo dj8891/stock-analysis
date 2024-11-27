@@ -39,7 +39,7 @@ public class ApplicationConfiguration {
         HttpClient httpClient = HttpClient.create(connectionProvider)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000) // Connection timeout (5 seconds)
-                .responseTimeout(Duration.ofSeconds(45))
+                .responseTimeout(Duration.ofSeconds(60))
                 .doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(30))); // Read timeout (30 seconds)
         // Configure WebClient with the customized HttpClient
         return builder
