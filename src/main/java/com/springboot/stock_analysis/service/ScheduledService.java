@@ -128,9 +128,8 @@ public class ScheduledService {
         System.out.println("Getting All tickers started!");
         Mono.just("")
                 .expand(cursor -> this.fetchNewsWithCursor(cursor)
-                        .delaySubscription(Duration.ofMillis(500))
+                        .delaySubscription(Duration.ofMillis(1000))
                         .flatMap(response -> {
-                            System.out.println("Processing cursor: " + cursor);
                             JsonNode results = response.path("results");
                             String nextUrl = response.path("next_url").asText();
 
@@ -320,7 +319,7 @@ public class ScheduledService {
 
     public void runDailyTask() {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-
+        ScheduledExecutorService schedulerForAllTickers = Executors.newSingleThreadScheduledExecutor();
         Runnable dailyTask = () -> CompletableFuture.runAsync(() -> {
             System.out.println("GET Annual Data Started!");
             try {
@@ -377,17 +376,35 @@ public class ScheduledService {
             }
         });
 
+        Runnable dailyTaskForTickers = () -> CompletableFuture.runAsync(this::getAllTickers);
         // Calculate the initial delay until the first execution
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
         scheduler.scheduleAtFixedRate(dailyTask, 20 * 60, period, TimeUnit.SECONDS);
+        schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutting down executors...");
+            scheduler.shutdown();
+            schedulerForAllTickers.shutdown();
+            try {
+                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    scheduler.shutdownNow();
+                }
+                if (!schedulerForAllTickers.awaitTermination(5, TimeUnit.SECONDS)) {
+                    schedulerForAllTickers.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                scheduler.shutdownNow();
+                schedulerForAllTickers.shutdownNow();
+            }
+            System.out.println("Executors shut down.");
+        }));
     }
 
     @PostConstruct
     public void onStartup() {
         getInfo();
-        getAllTickers();
         runDailyTask();
     }
 }
