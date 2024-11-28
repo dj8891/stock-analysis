@@ -257,9 +257,9 @@ public class ScheduledService {
                                         asyncGetOneFinancialInfo(ticker, true);
 
                                         // Introduce a non-blocking delay after every 50 tickers
-//                                        if (i > 0 && i % 50 == 0) {
-//                                            return Mono.delay(Duration.ofMillis(500));
-//                                        }
+                                        if (i > 0 && i % 50 == 0) {
+                                            return Mono.delay(Duration.ofMillis(500));
+                                        }
                                         return Mono.empty();
                                     })
                                     .then(Mono.fromRunnable(() -> {
@@ -299,9 +299,9 @@ public class ScheduledService {
                                                     }
 
                                                     // Introduce a longer delay after every 50 tickers
-//                                                    if (i > 0 && i % 50 == 0) {
-//                                                        return Mono.delay(Duration.ofMillis(5000));
-//                                                    }
+                                                    if (i > 0 && i % 50 == 0) {
+                                                        return Mono.delay(Duration.ofMillis(5000));
+                                                    }
                                                     return Mono.empty();
                                                 });
                                     })
@@ -338,9 +338,9 @@ public class ScheduledService {
                                             asyncGetOneFinancialInfo(ticker, false);
 
                                             // Add a non-blocking delay after every 50 tickers
-//                                            if (i > 0 && i % 50 == 0) {
-//                                                return Mono.delay(Duration.ofMillis(5000));
-//                                            }
+                                            if (i > 0 && i % 50 == 0) {
+                                                return Mono.delay(Duration.ofMillis(5000));
+                                            }
                                             return Mono.empty();
                                         })
                                         .then(Mono.fromRunnable(() -> {
@@ -359,9 +359,9 @@ public class ScheduledService {
                                             asyncGetOneFinancialInfo(ticker, false);
 
                                             // Delay after every 50 tickers
-//                                            if (i > 0 && i % 50 == 0) {
-//                                                return Mono.delay(Duration.ofMillis(5000));
-//                                            }
+                                            if (i > 0 && i % 50 == 0) {
+                                                return Mono.delay(Duration.ofMillis(5000));
+                                            }
                                             return Mono.empty();
                                         })
                                         .then(Mono.fromRunnable(() -> {
