@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.PrematureCloseException;
@@ -299,7 +298,7 @@ public class ScheduledService {
         });
     }
 
-    /* public void getInfo() {
+    public void getInfo() {
         // Use a CompletableFuture to execute the async logic
         CompletableFuture.runAsync(() -> {
             getAllActiveTickers()
@@ -376,94 +375,7 @@ public class ScheduledService {
                     .doOnError(e -> System.out.println("ERROR (getInfo): " + e.getMessage()))
                     .subscribe(); // Start the reactive flow asynchronously
         });
-    } */
-
-    private Disposable getInfoSubscription; // To store the subscription
-
-    public void getInfo() {
-        if (getInfoSubscription != null && !getInfoSubscription.isDisposed()) {
-            // Dispose of the previous subscription to prevent duplicate executions
-            getInfoSubscription.dispose();
-        }
-
-        // Use a CompletableFuture to execute the async logic
-        getInfoSubscription = (Disposable) CompletableFuture.runAsync(() -> {
-            getAllActiveTickers()
-                    .flatMap(tickers -> {
-                        if (tickers != null && tickers.has("tickers")) {
-                            JsonNode allTickers = tickers.path("tickers");
-                            System.out.println("LOG: Getting info started!");
-                            return Flux.fromIterable(allTickers)
-                                    .index() // Get the index to control batching
-                                    .flatMap(indexed -> {
-                                        int i = Math.toIntExact(indexed.getT1());
-                                        JsonNode tickerData = indexed.getT2();
-                                        String ticker = tickerData.path("ticker").asText();
-
-                                        addStock(ticker, "TTM", tickerData.path("day").path("vw").asDouble());
-                                        asyncGetOneFinancialInfo(ticker, true);
-
-                                        // Introduce a non-blocking delay after every 50 tickers
-                                        if (i > 0 && i % 50 == 0) {
-                                            return Mono.delay(Duration.ofMillis(500));
-                                        }
-                                        return Mono.empty();
-                                    })
-                                    .then(Mono.fromRunnable(() -> {
-                                        System.out.println("LOG: Getting Stock TTM Completed!");
-                                        System.out.println("LOG: Getting Financial Info Completed!");
-                                    }))
-                                    .onErrorResume(e -> {
-                                        System.out.println("LOG: ERROR____: " + e.getMessage());
-                                        return Mono.empty();
-                                    });
-                        } else {
-                            // If tickers can't be fetched, fall back to using the local repository
-                            System.out.println("LOG: CAN'T GET TICKERS");
-                            return Flux.fromIterable(tickersRepository.findAll())
-                                    .index()
-                                    .flatMap(indexed -> {
-                                        int i = Math.toIntExact(indexed.getT1());
-                                        Tickers tickerEntity = indexed.getT2();
-                                        String ticker = tickerEntity.getShortName();
-
-                                        asyncGetOneFinancialInfo(ticker, true);
-
-                                        // Make individual requests for each ticker
-                                        return webClient.get()
-                                                .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
-                                                .retrieve()
-                                                .bodyToMono(JsonNode.class)
-                                                .onErrorResume(e -> {
-                                                    System.out.println("ERROR: Get Ticker Data By Ticker");
-                                                    return Mono.empty();
-                                                })
-                                                .flatMap(tickerData -> {
-                                                    if (tickerData != null) {
-                                                        addStock(ticker, "TTM", tickerData.path("ticker").path("day").path("vw").asDouble());
-                                                    } else {
-                                                        System.out.println("ERROR: Ticker Data Get Failed!");
-                                                    }
-
-                                                    // Introduce a longer delay after every 50 tickers
-                                                    if (i > 0 && i % 50 == 0) {
-                                                        return Mono.delay(Duration.ofMillis(500));
-                                                    }
-                                                    return Mono.empty();
-                                                });
-                                    })
-                                    .then(Mono.fromRunnable(() -> {
-                                        System.out.println("LOG: Getting Financial Info Completed!");
-                                    }));
-                        }
-                    })
-                    .then(Mono.delay(Duration.ofMinutes(30)))
-                    .doOnSuccess(ignored -> this.getInfo()) // Schedule the next run
-                    .doOnError(e -> System.out.println("ERROR (getInfo): " + e.getMessage()))
-                    .subscribe(); // Start the reactive flow asynchronously
-        }).thenApply(ignored -> null); // Handle CompletableFuture
     }
-
 
     public void runDailyTask() {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
