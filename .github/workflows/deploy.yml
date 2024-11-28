@@ -10,12 +10,8 @@ on:
 
 jobs:
   deploy:
-    strategy:
-      fail-fast: false
-      matrix:
-        configuration: [Debug, Release ]
     runs-on: self-hosted
-    timeout-minutes: 10
+    timeout-minutes: 360
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
