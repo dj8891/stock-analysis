@@ -40,6 +40,7 @@ public class SecurityConfiguration {
                       "/ads.txt",
                       "/assets/**",
                       "/",
+                      "/*.png",
                       "/reset-password/**",
                       "/forgot-password",
                       "/login",
