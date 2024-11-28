@@ -405,6 +405,6 @@ public class ScheduledService {
     @PostConstruct
     public void onStartup() {
         getInfo();
-        runDailyTask();
+//        runDailyTask();
     }
 }
