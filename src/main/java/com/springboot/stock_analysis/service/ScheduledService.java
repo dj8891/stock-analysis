@@ -300,7 +300,7 @@ public class ScheduledService {
 
                                                     // Introduce a longer delay after every 50 tickers
                                                     if (i > 0 && i % 50 == 0) {
-                                                        return Mono.delay(Duration.ofMillis(5000));
+                                                        return Mono.delay(Duration.ofMillis(500));
                                                     }
                                                     return Mono.empty();
                                                 });
@@ -339,7 +339,7 @@ public class ScheduledService {
 
                                             // Add a non-blocking delay after every 50 tickers
                                             if (i > 0 && i % 50 == 0) {
-                                                return Mono.delay(Duration.ofMillis(5000));
+                                                return Mono.delay(Duration.ofMillis(500));
                                             }
                                             return Mono.empty();
                                         })
@@ -360,7 +360,7 @@ public class ScheduledService {
 
                                             // Delay after every 50 tickers
                                             if (i > 0 && i % 50 == 0) {
-                                                return Mono.delay(Duration.ofMillis(5000));
+                                                return Mono.delay(Duration.ofMillis(500));
                                             }
                                             return Mono.empty();
                                         })
