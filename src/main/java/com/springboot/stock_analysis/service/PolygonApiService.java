@@ -85,22 +85,24 @@ public class PolygonApiService {
             for(String ticker: this.allTickers) {
                 double stockGrowth = this.calculatorUtils.overallGrowth(this.allStocks, ticker);
                 if(Double.isNaN(stockGrowth) || Double.isInfinite(stockGrowth)) continue;
-                if(this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getStock() < 10) continue;
+                if(this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getStock() < 10 && this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getStock() > 0) continue;
                 RatedStockDTO ratedStockDTO = new RatedStockDTO(ticker, stockGrowth);
                 ratedStocks.add(ratedStockDTO);
             }
-            ratedStocks.sort(new Comparator<RatedStockDTO>() {
-                @Override
-                public int compare(RatedStockDTO o1, RatedStockDTO o2) {
-                    return Double.compare(o2.getRating(), o1.getRating());
+            if(!ratedStocks.isEmpty()) {
+                ratedStocks.sort(new Comparator<RatedStockDTO>() {
+                    @Override
+                    public int compare(RatedStockDTO o1, RatedStockDTO o2) {
+                        return Double.compare(o2.getRating(), o1.getRating());
+                    }
+                });
+                List<RatedStockDTO> rtnList = new ArrayList<>();
+                for(int i = 0; i < ratedStocks.size(); i++) {
+                    if(i == 30) break;
+                    rtnList.add(ratedStocks.get(i));
                 }
-            });
-            List<RatedStockDTO> rtnList = new ArrayList<>();
-            for(int i = 0; i < ratedStocks.size(); i++) {
-                if(i == 30) break;
-                rtnList.add(ratedStocks.get(i));
+                return rtnList;
             }
-            return rtnList;
         }
         return null;
     }
@@ -135,18 +137,20 @@ public class PolygonApiService {
                 PerformanceDTO performanceDTO = new PerformanceDTO(ticker, growth);
                 performanceList.add(performanceDTO);
             }
-            performanceList.sort(new Comparator<PerformanceDTO>() {
-                @Override
-                public int compare(PerformanceDTO o1, PerformanceDTO o2) {
-                    return Double.compare(o2.getGrowth(), o1.getGrowth());
+            if(!performanceList.isEmpty()) {
+                performanceList.sort(new Comparator<PerformanceDTO>() {
+                    @Override
+                    public int compare(PerformanceDTO o1, PerformanceDTO o2) {
+                        return Double.compare(o2.getGrowth(), o1.getGrowth());
+                    }
+                });
+                List<PerformanceDTO> rtnList = new ArrayList<>();
+                for(int i = 0; i < performanceList.size(); i++) {
+                    if( i == 30 ) break;
+                    rtnList.add(performanceList.get(i));
                 }
-            });
-            List<PerformanceDTO> rtnList = new ArrayList<>();
-            for(int i = 0; i < performanceList.size(); i++) {
-                if( i == 30 ) break;
-                rtnList.add(performanceList.get(i));
+                return rtnList;
             }
-            return rtnList;
         }
         return null;
     }

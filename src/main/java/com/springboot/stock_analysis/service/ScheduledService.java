@@ -104,7 +104,7 @@ public class ScheduledService {
         }
     }
 
-    /* private Mono<JsonNode> fetchNewsWithCursor(String cursor) {
+     private Mono<JsonNode> fetchNewsWithCursor(String cursor) {
         return webClient.get()
                 .uri("/v3/reference/tickers?active=true&limit=1000&cursor={cursor}&apiKey={apiKey}", cursor, apiKey)
                 .retrieve()
@@ -153,74 +153,15 @@ public class ScheduledService {
                             return Mono.just(nextCursor);
                         })
                 )
+                .delayElements(Duration.ofMillis(1000)) // Add delay between fetches to respect API rate limits
                 .doOnComplete(() -> System.out.println("LOG: Getting all tickers completed!"))
                 .onErrorResume(e -> {
                     System.out.println("ERROR: Getting all tickers error - " + e.getMessage());
                     return Mono.empty();
                 })
                 .subscribe();
-    } */
-    private Mono<JsonNode> fetchNewsWithCursor(String cursor) {
-        return webClient.get()
-                .uri("/v3/reference/tickers?active=true&limit=1000&cursor={cursor}&apiKey={apiKey}", cursor, apiKey)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .timeout(Duration.ofSeconds(60))
-                .retryWhen(Retry.backoff(5, Duration.ofSeconds(5))
-                        .maxBackoff(Duration.ofSeconds(30))
-                        .jitter(0.5)
-                        .filter(e -> e instanceof PrematureCloseException))
-                .onErrorResume(e -> {
-                    if (e instanceof PrematureCloseException) {
-                        System.out.println("PrematureCloseException for cursor " + cursor + ": Retrying...");
-                    } else {
-                        System.out.println("Error fetching cursor " + cursor + ": " + e.getMessage());
-                    }
-                    return Mono.empty();
-                });
     }
 
-    public void getAllTickers() {
-        System.out.println("Getting All Tickers started!");
-
-        Flux.generate(() -> "", (cursor, sink) -> {
-                    fetchNewsWithCursor(cursor)
-                            .doOnNext(response -> {
-                                JsonNode results = response.path("results");
-                                String nextUrl = response.path("next_url").asText();
-
-                                // Process and save the tickers
-                                results.forEach(result -> {
-                                    String ticker = result.path("ticker").asText();
-                                    String name = result.has("name") ? result.path("name").asText() : "";
-                                    addTicker(ticker, name);
-                                });
-
-                                if (nextUrl.isEmpty() || results.isEmpty()) {
-                                    sink.complete(); // No more data to fetch
-                                } else {
-                                    String nextCursor = "";
-                                    try {
-                                        nextCursor = URI.create(nextUrl).getQuery().split("cursor=")[1].split("&")[0];
-                                    } catch (Exception e) {
-                                        System.out.println("Failed to extract cursor: " + e.getMessage());
-                                    }
-                                    sink.next(nextCursor); // Pass the next cursor for the next iteration
-                                }
-                            })
-                            .onErrorResume(e -> {
-                                System.out.println("Error fetching data: " + e.getMessage());
-                                sink.complete();
-                                return Mono.empty();
-                            })
-                            .block(); // Blocking to synchronize within the generator
-                    return cursor;
-                })
-                .delayElements(Duration.ofMillis(1000)) // Add delay between fetches to respect API rate limits
-                .doOnComplete(() -> System.out.println("LOG: Getting all tickers completed!"))
-                .onErrorContinue((e, obj) -> System.out.println("Error in flux generation: " + e.getMessage()))
-                .subscribe();
-    }
     public Mono<JsonNode> getAllActiveTickers() {
         return webClient.get()
                 .uri("/v2/snapshot/locale/us/markets/stocks/tickers?apiKey={apiKey}", apiKey)

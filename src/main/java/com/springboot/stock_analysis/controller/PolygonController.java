@@ -33,7 +33,7 @@ public class PolygonController {
                 .map(ResponseEntity::ok)  // Map the successful response to ResponseEntity
                 .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null)).block(); // Handle errors
     }
-
+////
     @GetMapping("/best-performance")
     public ResponseEntity<?> getPerformanceList() {
         if(polygonApiService.getPerformanceList() != null) {
@@ -42,7 +42,7 @@ public class PolygonController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database error");
         }
     }
-
+//
     @PostMapping("/news")
     public ResponseEntity<List<Map<String, String>>> getNews(@RequestParam("tickers") String tickers, @RequestParam("limit") String limit, @RequestParam("page") String page) {
         return polygonApiService.getNews(tickers, limit, Integer.parseInt(page))
