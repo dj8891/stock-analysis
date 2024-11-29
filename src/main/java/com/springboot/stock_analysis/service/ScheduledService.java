@@ -153,7 +153,6 @@ public class ScheduledService {
                             return Mono.just(nextCursor);
                         })
                 )
-                .delayElements(Duration.ofMillis(1000)) // Add delay between fetches to respect API rate limits
                 .doOnComplete(() -> System.out.println("LOG: Getting all tickers completed!"))
                 .onErrorResume(e -> {
                     System.out.println("ERROR: Getting all tickers error - " + e.getMessage());
