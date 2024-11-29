@@ -131,7 +131,7 @@ public class PolygonApiService {
         if(!this.allStocks.isEmpty()) {
             for(String ticker: this.allTickers) {
                 Stocks ttmStock = this.calculatorUtils.findStockByTickerAndYear(this.allStocks, ticker, "TTM");
-                if(ttmStock.getStock() < 10) continue;
+                if(ttmStock.getStock() < 10 && ttmStock.getStock() > 0) continue;
                 double growth = this.calculatorUtils.companyGrowthRate(this.allStocks, ticker, (lastYear - 1), lastYear, "stock");
                 if(Double.isNaN(growth) || Double.isInfinite(growth)) continue;
                 PerformanceDTO performanceDTO = new PerformanceDTO(ticker, growth);
