@@ -130,6 +130,8 @@ public class PolygonApiService {
         List<PerformanceDTO> performanceList = new ArrayList<>();
         if(!this.allStocks.isEmpty()) {
             for(String ticker: this.allTickers) {
+                if(ticker.equals("DIA") || ticker.equals("SPY") || ticker.equals("QQQ") || ticker.equals("IWM"))
+                    continue;
                 Stocks ttmStock = this.calculatorUtils.findStockByTickerAndYear(this.allStocks, ticker, "TTM");
                 if(ttmStock.getStock() < 10 && ttmStock.getStock() > 0) continue;
                 double growth = this.calculatorUtils.companyGrowthRate(this.allStocks, ticker, (lastYear - 1), lastYear, "stock");
@@ -320,13 +322,13 @@ public class PolygonApiService {
                         double stockGrowth = this.calculatorUtils.companyGrowthRate(allStocks, ticker, endYear - 2, endYear, "stock");
                         Stocks startStocks = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear - 4));
                         Stocks lastStocks = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear));
-
                         double peg = 0;
 
                         double epsPrice = lastStocks.getEps();
                         double stockP = lastStocks.getStock();
-                        double pe = epsPrice == 0 ? 0 : stockP / epsPrice;
-
+                        //double pe = epsPrice == 0 ? 0 : stockP / epsPrice;
+                        Stocks ttmStock = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM");
+                        double pe = epsTTM == 0 ? 0 : ttmStock.getStock() / epsTTM;
                         if(startStocks.getEps() != 0)
                          peg = this.calculatorUtils.cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
                         returnValue.put("revenueGrowthRate", String.valueOf(revenueGrowth));
