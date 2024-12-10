@@ -157,13 +157,14 @@ public class PolygonApiService {
                             })
                             .block();
 
-//                    Boolean isETF = false;
-//                    if (detail.path("results").has("type")) {
-//                        isETF = "ETF".equals(detail.path("results").path("type").asText().trim());
-//                    }
-//
-//                    if(isETF)
-//                        continue;
+                    JsonNode results = detail.path("results");
+                    if (results.has("type")) {
+                        String type = results.path("type").asText().trim();
+                        if ("ETF".equals(type)) {
+                            continue;
+                        }
+                    }
+
                     rtnList.add(performanceList.get(i));
                 }
                 return rtnList;
