@@ -126,7 +126,7 @@ public class PolygonApiService {
 
     public List<PerformanceDTO> getPerformanceList() {
         int curYear = LocalDate.now().getYear();
-        int lastYear = curYear - 1;//kk
+        int lastYear = curYear - 1;
         List<PerformanceDTO> performanceList = new ArrayList<>();
         if(!this.allStocks.isEmpty()) {
             for(String ticker: this.allTickers) {
