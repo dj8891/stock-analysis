@@ -130,8 +130,6 @@ public class PolygonApiService {
         List<PerformanceDTO> performanceList = new ArrayList<>();
         if(!this.allStocks.isEmpty()) {
             for(String ticker: this.allTickers) {
-                if(ticker.equals("DIA") || ticker.equals("SPY") || ticker.equals("QQQ") || ticker.equals("IWM"))
-                    continue;
                 Stocks ttmStock = this.calculatorUtils.findStockByTickerAndYear(this.allStocks, ticker, "TTM");
                 if(ttmStock.getStock() < 10 && ttmStock.getStock() > 0) continue;
                 double growth = this.calculatorUtils.companyGrowthRate(this.allStocks, ticker, (lastYear - 1), lastYear, "stock");
@@ -149,6 +147,23 @@ public class PolygonApiService {
                 List<PerformanceDTO> rtnList = new ArrayList<>();
                 for(int i = 0; i < performanceList.size(); i++) {
                     if( i == 30 ) break;
+
+                    JsonNode detail = webClient.get()
+                            .uri("/v3/reference/tickers/{ticker}?apiKey={apiKey}", performanceList.get(i).getTicker(), apiKey)
+                            .retrieve()
+                            .bodyToMono(JsonNode.class)
+                            .onErrorResume( e -> {
+                                return Mono.empty();
+                            })
+                            .block();
+
+                    Boolean isETF = false;
+                    if (detail.path("results").has("type")) {
+                        isETF = "ETF".equals(detail.path("results").path("type").asText().trim());
+                    }
+
+                    if(isETF)
+                        continue;
                     rtnList.add(performanceList.get(i));
                 }
                 return rtnList;
@@ -314,6 +329,15 @@ public class PolygonApiService {
                         String marketCap = "";
                         marketCap = String.format("%.2fB", val.path("results")
                                 .path("market_cap").asDouble() / 1000000000.0);
+                        String locale = "";
+                        if (val.path("results").has("locale")) {
+                            locale = val.path("results").path("locale").asText();
+                        }
+
+                        if (val.path("results").has("type") && "ETF".equals(val.path("results").path("type").asText().trim())) {
+                            locale = val.path("results").path("type").asText();
+                        }
+
                         double epsTTM = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getEps();
                         returnValue.put("marketCap", marketCap);
                         returnValue.put("epsTTM", String.valueOf(epsTTM));
@@ -335,6 +359,8 @@ public class PolygonApiService {
                         returnValue.put("stockGrowthRate", String.valueOf(stockGrowth));
                         returnValue.put("pegRatio", String.valueOf(peg));
                         returnValue.put("peRatio", String.valueOf(pe));
+                        returnValue.put("locale", locale);
+
                         return returnValue;
                     });
         }
