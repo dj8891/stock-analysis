@@ -37,7 +37,7 @@ public class PolygonController {
 ////
     @GetMapping("/best-performance")
     public ResponseEntity<?> getPerformanceList() {
-        System.out.println("Performance API is called");
+        System.out.println("**********************Performance API is called*********************");
         if(polygonApiService.getPerformanceList() != null) {
             return ResponseEntity.ok(polygonApiService.getPerformanceList());
         } else {

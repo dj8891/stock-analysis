@@ -166,6 +166,7 @@ public class PolygonApiService {
                             String type = results.path("type").asText().trim();
                             tickerModel.setType(type);
                         }
+                        System.out.println("API is called");
                     }
 
                     System.out.println(tickerModel.getShortName() + "/" + tickerModel.getType());
@@ -175,6 +176,9 @@ public class PolygonApiService {
                     rtnList.add(performanceList.get(i));
                     index++;
                 }
+
+                System.out.println("*********Result************");
+                System.out.println(rtnList);
                 return rtnList;
             }
         }
