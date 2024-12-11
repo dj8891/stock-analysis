@@ -153,27 +153,35 @@ public class PolygonApiService {
 
                         String ticker = performanceList.get(i).getTicker();
                         Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
-                        if(tickerModel.getType().equals("")) {
-                            JsonNode detail = webClient.get()
-                                    .uri("/v3/reference/tickers/{ticker}?apiKey={apiKey}", performanceList.get(i).getTicker(), apiKey)
-                                    .retrieve()
-                                    .bodyToMono(JsonNode.class)
-                                    .onErrorResume( e -> {
-                                        return Mono.empty();
-                                    })
-                                    .block();
 
-                            JsonNode results = detail.path("results");
-                            if (results.has("type")) {
-                                String type = results.path("type").asText().trim();
-                                tickerModel.setType(type);
+                        if (tickerModel.getType().equals("")) {
+                            String tickerType = "";
+                            try {
+                                JsonNode detail = webClient.get()
+                                        .uri("/v3/reference/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
+                                        .retrieve()
+                                        .bodyToMono(JsonNode.class)
+                                        .block(); // Make the call synchronous
+
+                                if (detail != null) {
+                                    JsonNode results = detail.path("results");
+                                    if (results.has("type")) {
+                                        tickerType = results.path("type").asText().trim();
+                                        tickerModel.setType(tickerType);
+                                    }
+                                } else {
+                                    System.out.println("API returned null for ticker: " + ticker);
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Error during API call for ticker: " + ticker + " - " + e.getMessage());
+                                e.printStackTrace();
                             }
-                            System.out.println("API is called");
                         }
 
                         if ("ETF".equals(tickerModel.getType())) {
                             continue;
                         }
+
                         System.out.println(index);
                         System.out.println(tickerModel.getShortName() + "/" + tickerModel.getType());
                         rtnList.add(performanceList.get(i));
