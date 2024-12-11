@@ -168,6 +168,7 @@ public class PolygonApiService {
                         }
                     }
 
+                    System.out.println(tickerModel.getShortName() + "/" + tickerModel.getType());
                     if ("ETF".equals(tickerModel.getType())) {
                         continue;
                     }
