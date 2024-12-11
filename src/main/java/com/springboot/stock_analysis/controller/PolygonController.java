@@ -29,7 +29,6 @@ public class PolygonController {
 
     @GetMapping("/market-summary")
     public ResponseEntity<?> getMarketSummary() {
-        System.out.println("Market Summary API is called");
         return polygonApiService.getAllETFData()
                 .map(ResponseEntity::ok)  // Map the successful response to ResponseEntity
                 .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null)).block(); // Handle errors
@@ -37,7 +36,6 @@ public class PolygonController {
 ////
     @GetMapping("/best-performance")
     public ResponseEntity<?> getPerformanceList() {
-        System.out.println("**********************Performance API is called*********************");
         if(polygonApiService.getPerformanceList() != null) {
             return ResponseEntity.ok(polygonApiService.getPerformanceList());
         } else {

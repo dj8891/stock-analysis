@@ -185,19 +185,14 @@ public class PolygonApiService {
                                 e.printStackTrace();
                             }
                         }
-
+                        
                         if ("ETF".equals(tickerModel.getType())) {
                             continue;
                         }
-
-                        System.out.println(index);
-                        System.out.println(tickerModel.getShortName() + "/" + tickerModel.getType());
                         rtnList.add(performanceList.get(i));
                         index++;
                     }
 
-                    System.out.println("*********Result************");
-                    System.out.println(rtnList);
                     return rtnList;
                 }
             }
