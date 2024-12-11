@@ -152,9 +152,9 @@ public class PolygonApiService {
                         if( index == 30 ) break;
 
                         String ticker = performanceList.get(i).getTicker();
-                        Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
+                        Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers("", "", ""));
 
-                        if(tickerModel == null) {
+                        if(tickerModel.getShortName().equals("") && tickerModel.getFullName().equals("")) {
                             continue;
                         }
 
