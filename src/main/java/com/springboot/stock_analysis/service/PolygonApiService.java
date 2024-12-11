@@ -158,6 +158,10 @@ public class PolygonApiService {
                             continue;
                         }
 
+                        if (tickerModel.getType() == null) {
+                            tickerModel.setType("");
+                        }
+
                         if (tickerModel.getType().equals("")) {
                             String tickerType = "";
                             try {
@@ -182,7 +186,7 @@ public class PolygonApiService {
                             }
                         }
 
-                        if (tickerModel.getType() != null && "ETF".equals(tickerModel.getType())) {
+                        if ("ETF".equals(tickerModel.getType())) {
                             continue;
                         }
 
