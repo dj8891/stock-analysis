@@ -125,7 +125,7 @@ public class ScheduledService {
     }
 
     public void getAllTickers() {
-        System.out.println("Getting All tickers started!");
+        System.out.println("Getting All tickers started!!!");
         Mono.just("")
                 .expand(cursor -> this.fetchNewsWithCursor(cursor)
                         .delaySubscription(Duration.ofMillis(1000))
