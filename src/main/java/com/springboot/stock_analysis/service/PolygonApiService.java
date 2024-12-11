@@ -154,6 +154,10 @@ public class PolygonApiService {
                         String ticker = performanceList.get(i).getTicker();
                         Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
 
+                        if(tickerModel.getType() == null) {
+                            continue;
+                        }
+
                         if (tickerModel.getType().equals("")) {
                             String tickerType = "";
                             try {
