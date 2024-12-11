@@ -182,7 +182,7 @@ public class PolygonApiService {
                             }
                         }
 
-                        if ("ETF".equals(tickerModel.getType())) {
+                        if (tickerModel.getType() != null && "ETF".equals(tickerModel.getType())) {
                             continue;
                         }
 
