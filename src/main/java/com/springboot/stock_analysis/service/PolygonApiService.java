@@ -154,7 +154,7 @@ public class PolygonApiService {
                         String ticker = performanceList.get(i).getTicker();
                         Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
 
-                        if(tickerModel.getType() == null) {
+                        if(tickerModel == null) {
                             continue;
                         }
 
@@ -177,7 +177,7 @@ public class PolygonApiService {
                                     System.out.println("API returned null for ticker: " + ticker);
                                 }
                             } catch (Exception e) {
-                                System.err.println("Error during API call for ticker: " + ticker + " - " + e.getMessage());
+                                System.err.println("Error during API call for ticker: " + ticker);
                                 e.printStackTrace();
                             }
                         }
