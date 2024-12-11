@@ -47,6 +47,7 @@ public class SecurityConfiguration {
                       "/pricing",
                       "/term",
                       "/privacy",
+                      "/security",
                       "/disclaimer",
                       "/emailpage",
                       "/headlines",

@@ -41,6 +41,18 @@ public class WatchListController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database Error");
         }
     }
+
+    @PostMapping("/featuredannualreturn")
+    public ResponseEntity<?> getFeaturedAnnuralReturn(@RequestBody List<String> tickers) {
+        if (this.watchListService.getFeaturedAnnualReturn(tickers) != null) {
+            return this.watchListService.getFeaturedAnnualReturn(tickers).map(ResponseEntity::ok)
+                    .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null)).block(); // Handle errors
+        }
+        else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database Error");
+        }
+    }
+
     @PostMapping("/news")
     public ResponseEntity<?> getNewsData(@RequestBody List<WatchList> watchLists) {
         if(this.watchListService.getNewsData(watchLists) != null) {

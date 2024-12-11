@@ -93,6 +93,24 @@ public class WatchListService {
         }
     }
 
+    public Mono<List<Map<String, String>>> getFeaturedAnnualReturn(List<String> tickers) {
+        if(!tickers.isEmpty()) {
+            int curYear = LocalDate.now().getYear() - 1;
+            int prevYear = curYear - 1;
+            List<Map<String, String>> returnVal = new ArrayList<>();
+            for(String ticker: tickers) {
+                double companyGrowthRate = this.calculatorUtils.companyGrowthRate(this.polygonApiService.getAllStocks(), ticker, curYear, curYear + 1, "stock");
+                Map<String, String> tmpRtn = new HashMap<>();
+                tmpRtn.put("ticker", ticker);
+                tmpRtn.put("growthRate", String.valueOf(companyGrowthRate));
+                returnVal.add(tmpRtn);
+            }
+            return Mono.just(returnVal);
+        } else {
+            return null;
+        }
+    }
+
     public List<Map<String, String>> getNewsData(List<WatchList> watchLists) {
         List<Map<String, String>> returnList = new ArrayList<>();
 
