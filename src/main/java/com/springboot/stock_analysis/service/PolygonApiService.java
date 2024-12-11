@@ -145,27 +145,34 @@ public class PolygonApiService {
                     }
                 });
                 List<PerformanceDTO> rtnList = new ArrayList<>();
+                int index = 0;
                 for(int i = 0; i < performanceList.size(); i++) {
-                    if( i == 30 ) break;
+                    if( index == 30 ) break;
 
-                    JsonNode detail = webClient.get()
-                            .uri("/v3/reference/tickers/{ticker}?apiKey={apiKey}", performanceList.get(i).getTicker(), apiKey)
-                            .retrieve()
-                            .bodyToMono(JsonNode.class)
-                            .onErrorResume( e -> {
-                                return Mono.empty();
-                            })
-                            .block();
+                    String ticker = performanceList.get(i).getTicker();
+                    Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
+                    if(tickerModel.getType().equals("")) {
+                        JsonNode detail = webClient.get()
+                                .uri("/v3/reference/tickers/{ticker}?apiKey={apiKey}", performanceList.get(i).getTicker(), apiKey)
+                                .retrieve()
+                                .bodyToMono(JsonNode.class)
+                                .onErrorResume( e -> {
+                                    return Mono.empty();
+                                })
+                                .block();
 
-                    JsonNode results = detail.path("results");
-                    if (results.has("type")) {
-                        String type = results.path("type").asText().trim();
-                        if ("ETF".equals(type)) {
-                            continue;
+                        JsonNode results = detail.path("results");
+                        if (results.has("type")) {
+                            String type = results.path("type").asText().trim();
+                            tickerModel.setType(type);
                         }
                     }
 
+                    if ("ETF".equals(tickerModel.getType())) {
+                        continue;
+                    }
                     rtnList.add(performanceList.get(i));
+                    index++;
                 }
                 return rtnList;
             }
@@ -319,7 +326,7 @@ public class PolygonApiService {
             returnValue.put("growth", String.valueOf(growthRating));
             returnValue.put("value", String.valueOf(valueRating));
             returnValue.put("performance", String.valueOf(performanceRating));
-            Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, ""));
+            Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
             String company = tickerModel.getFullName();
             returnValue.put("company", company);
             return webClient.get()

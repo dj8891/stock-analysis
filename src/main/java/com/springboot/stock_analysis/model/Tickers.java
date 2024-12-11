@@ -16,9 +16,13 @@ public class Tickers {
     @Column(name = "full_name")
     private String fullName;
 
-    public Tickers(String shortName, String fullName) {
+    @Column(name = "type")
+    private String type;
+
+    public Tickers(String shortName, String fullName, String type) {
         this.shortName = shortName;
         this.fullName = fullName;
+        this.type = type;
     }
 
     public Tickers() {
@@ -47,5 +51,13 @@ public class Tickers {
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }

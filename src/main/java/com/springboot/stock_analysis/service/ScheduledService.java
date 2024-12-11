@@ -44,9 +44,9 @@ public class ScheduledService {
         this.mapper = new ObjectMapper();
     }
 
-    public void addTicker(String shortName, String fullName) {
+    public void addTicker(String shortName, String fullName, String type) {
         if (!tickersRepository.existsByShortName(shortName)) {
-            Tickers newTicker = new Tickers(shortName, fullName);
+            Tickers newTicker = new Tickers(shortName, fullName, type);
 
             tickersRepository.save(newTicker);
         }
@@ -136,7 +136,8 @@ public class ScheduledService {
                             for (JsonNode result : results) {
                                 String ticker = result.path("ticker").asText();
                                 String name = result.has("name") ? result.path("name").asText() : "";
-                                addTicker(ticker, name);
+
+                                addTicker(ticker, name, "");
                             }
 
                             if (nextUrl.isEmpty() || results.isEmpty()) {
@@ -383,6 +384,7 @@ public class ScheduledService {
         // Schedule the task to run daily
         scheduler.scheduleAtFixedRate(dailyTask, 20 * 60, period, TimeUnit.SECONDS);
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Shutting down executors...");
             scheduler.shutdown();
