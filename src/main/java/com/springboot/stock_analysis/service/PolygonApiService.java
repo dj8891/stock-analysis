@@ -12,6 +12,7 @@ import com.springboot.stock_analysis.model.Tickers;
 import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.repository.TickersRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
+import io.netty.handler.ssl.PemX509Certificate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.AccessDeniedException;
@@ -128,61 +129,68 @@ public class PolygonApiService {
         int curYear = LocalDate.now().getYear();
         int lastYear = curYear - 1;
         List<PerformanceDTO> performanceList = new ArrayList<>();
-        if(!this.allStocks.isEmpty()) {
-            for(String ticker: this.allTickers) {
-                Stocks ttmStock = this.calculatorUtils.findStockByTickerAndYear(this.allStocks, ticker, "TTM");
-                if(ttmStock.getStock() < 10 && ttmStock.getStock() > 0) continue;
-                double growth = this.calculatorUtils.companyGrowthRate(this.allStocks, ticker, (lastYear - 1), lastYear, "stock");
-                if(Double.isNaN(growth) || Double.isInfinite(growth)) continue;
-                PerformanceDTO performanceDTO = new PerformanceDTO(ticker, growth);
-                performanceList.add(performanceDTO);
-            }
-            if(!performanceList.isEmpty()) {
-                performanceList.sort(new Comparator<PerformanceDTO>() {
-                    @Override
-                    public int compare(PerformanceDTO o1, PerformanceDTO o2) {
-                        return Double.compare(o2.getGrowth(), o1.getGrowth());
-                    }
-                });
-                List<PerformanceDTO> rtnList = new ArrayList<>();
-                int index = 0;
-                for(int i = 0; i < performanceList.size(); i++) {
-                    if( index == 30 ) break;
-
-                    String ticker = performanceList.get(i).getTicker();
-                    Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
-                    if(tickerModel.getType().equals("")) {
-                        JsonNode detail = webClient.get()
-                                .uri("/v3/reference/tickers/{ticker}?apiKey={apiKey}", performanceList.get(i).getTicker(), apiKey)
-                                .retrieve()
-                                .bodyToMono(JsonNode.class)
-                                .onErrorResume( e -> {
-                                    return Mono.empty();
-                                })
-                                .block();
-
-                        JsonNode results = detail.path("results");
-                        if (results.has("type")) {
-                            String type = results.path("type").asText().trim();
-                            tickerModel.setType(type);
-                        }
-                        System.out.println("API is called");
-                    }
-
-                    System.out.println(tickerModel.getShortName() + "/" + tickerModel.getType());
-                    if ("ETF".equals(tickerModel.getType())) {
-                        continue;
-                    }
-                    rtnList.add(performanceList.get(i));
-                    index++;
+        try {
+            if(!this.allStocks.isEmpty()) {
+                for(String ticker: this.allTickers) {
+                    Stocks ttmStock = this.calculatorUtils.findStockByTickerAndYear(this.allStocks, ticker, "TTM");
+                    if(ttmStock.getStock() < 10 && ttmStock.getStock() > 0) continue;
+                    double growth = this.calculatorUtils.companyGrowthRate(this.allStocks, ticker, (lastYear - 1), lastYear, "stock");
+                    if(Double.isNaN(growth) || Double.isInfinite(growth)) continue;
+                    PerformanceDTO performanceDTO = new PerformanceDTO(ticker, growth);
+                    performanceList.add(performanceDTO);
                 }
+                if(!performanceList.isEmpty()) {
+                    performanceList.sort(new Comparator<PerformanceDTO>() {
+                        @Override
+                        public int compare(PerformanceDTO o1, PerformanceDTO o2) {
+                            return Double.compare(o2.getGrowth(), o1.getGrowth());
+                        }
+                    });
+                    List<PerformanceDTO> rtnList = new ArrayList<>();
+                    int index = 0;
+                    for(int i = 0; i < performanceList.size(); i++) {
+                        if( index == 30 ) break;
 
-                System.out.println("*********Result************");
-                System.out.println(rtnList);
-                return rtnList;
+                        String ticker = performanceList.get(i).getTicker();
+                        Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
+                        if(tickerModel.getType().equals("")) {
+                            JsonNode detail = webClient.get()
+                                    .uri("/v3/reference/tickers/{ticker}?apiKey={apiKey}", performanceList.get(i).getTicker(), apiKey)
+                                    .retrieve()
+                                    .bodyToMono(JsonNode.class)
+                                    .onErrorResume( e -> {
+                                        return Mono.empty();
+                                    })
+                                    .block();
+
+                            JsonNode results = detail.path("results");
+                            if (results.has("type")) {
+                                String type = results.path("type").asText().trim();
+                                tickerModel.setType(type);
+                            }
+                            System.out.println("API is called");
+                        }
+
+                        if ("ETF".equals(tickerModel.getType())) {
+                            continue;
+                        }
+                        System.out.println(index);
+                        System.out.println(tickerModel.getShortName() + "/" + tickerModel.getType());
+                        rtnList.add(performanceList.get(i));
+                        index++;
+                    }
+
+                    System.out.println("*********Result************");
+                    System.out.println(rtnList);
+                    return rtnList;
+                }
             }
+            return null;
+        } catch (Exception ex) {
+            System.err.println("Unexpected error in getPerformanceList: " + ex.getMessage());
+            ex.printStackTrace();
+            return null;
         }
-        return null;
     }
 
     private List<Map<String, String>> processNews(JsonNode value) {
