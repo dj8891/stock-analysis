@@ -85,4 +85,26 @@ public class UserService implements UserDetailsService {
             return true;
         } else return false;
     }
+
+    public boolean subScribeCheck(String email) {
+        User user = userRepository.findByEmail(email).orElse(null);
+        if(user == null) {
+            return true;
+        }
+        else {
+            return user.getSubscribe();
+        }
+    }
+
+    public boolean setSubScribe(String email, Boolean subscribe) {
+        User user = userRepository.findByEmail(email).orElse(null);
+        if(user != null) {
+            user.setSubscribe(subscribe);
+            userRepository.save(user);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
 }

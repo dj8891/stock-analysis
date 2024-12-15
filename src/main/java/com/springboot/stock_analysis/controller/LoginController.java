@@ -13,6 +13,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
 @CrossOrigin("*")
@@ -53,6 +55,23 @@ public class LoginController {
         }
     }
 
+    @PostMapping(path = "/subscribe-check")
+    public ResponseEntity<Boolean> subScribeCheck(@RequestBody Map<String, Object> data) {
+        String email = (String) data.get("email");  // Retrieve the email
+        Boolean isSubscribe = userService.subScribeCheck(email);
+        return ResponseEntity.ok(isSubscribe);
+    }
+
+    @PostMapping(path = "/setsubscribe")
+    public ResponseEntity<String> setSubScribe(@RequestParam("email") String email, @RequestParam("subscribe") Boolean subscribe) {
+        boolean result = userService.setSubScribe(email, subscribe);
+        if (result) {
+            return ResponseEntity.ok("SubScribe has been set successfully");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid or expired token");
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<String> logout() {
         SecurityContextHolder.getContext().setAuthentication(null);
@@ -66,7 +85,7 @@ public class LoginController {
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestParam("token") String token, @RequestParam("newPassword") String newPassword) {
+    public ResponseEntity<String> resetPassword(@RequestParam("email") String token, @RequestParam("newPassword") String newPassword) {
         boolean result = userService.resetPassword(token, newPassword);
         if (result) {
             return ResponseEntity.ok("Password has been reset successfully");

@@ -51,9 +51,14 @@ public class AuthenticationService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("promo code invalid");
           }
         } else expireDate = 7L;
+
         User user = new User()
                 .setEmail(request.getEmail())
-                .setPassword(passwordEncoder.encode(request.getPassword())).setRole(RoleTypes.FREE).setExpiryDate(LocalDate.now().plusDays(expireDate));
+                .setPassword(passwordEncoder.encode(request.getPassword()))
+                .setRole(RoleTypes.FREE)
+                .setExpiryDate(LocalDate.now().plusDays(expireDate))
+                .setSubscribe(request.getSubscribe());
+
         userRepository.save(user);
         return ResponseEntity.ok(jwtService.generateToken(user));
       }

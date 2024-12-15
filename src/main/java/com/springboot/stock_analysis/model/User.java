@@ -40,6 +40,9 @@ public class User implements UserDetails {
     @Column(name = "expiryDate")
     private LocalDate expiryDate;
 
+    @Column(name = "isSubscribe")
+    private Boolean isSubscribe;
+
     public LocalDate getExpiryDate() {
         return expiryDate;
     }
@@ -140,5 +143,14 @@ public class User implements UserDetails {
 
     public void setPlanStatus(String planStatus) {
         this.planStatus = planStatus;
+    }
+
+    public Boolean getSubscribe() {
+        return isSubscribe;
+    }
+
+    public User setSubscribe(Boolean subscribe) {
+        isSubscribe = subscribe;
+        return this;
     }
 }

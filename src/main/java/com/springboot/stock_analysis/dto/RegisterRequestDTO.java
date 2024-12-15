@@ -4,6 +4,7 @@ public class RegisterRequestDTO {
     private String email;
     private String password;
     private String promoCode;
+    private Boolean subscribe;
 
     public String getEmail() {
         return email;
@@ -27,5 +28,13 @@ public class RegisterRequestDTO {
 
     public void setPromoCode(String promoCode) {
         this.promoCode = promoCode;
+    }
+
+    public Boolean getSubscribe() {
+        return subscribe;
+    }
+
+    public void setSubscribe(Boolean subscribe) {
+        this.subscribe = subscribe;
     }
 }
