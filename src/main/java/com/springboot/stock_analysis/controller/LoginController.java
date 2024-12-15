@@ -57,7 +57,7 @@ public class LoginController {
 
     @PostMapping(path = "/subscribe-check")
     public ResponseEntity<Boolean> subScribeCheck(@RequestBody Map<String, Object> data) {
-        String email = (String) data.get("email");  // Retrieve the email
+        String email = (String) data.get("email");
         Boolean isSubscribe = userService.subScribeCheck(email);
         return ResponseEntity.ok(isSubscribe);
     }
