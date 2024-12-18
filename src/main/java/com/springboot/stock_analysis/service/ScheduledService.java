@@ -378,7 +378,7 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTask, 20 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTask, 5 * 60, period, TimeUnit.SECONDS);
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
