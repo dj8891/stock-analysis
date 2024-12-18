@@ -60,11 +60,6 @@ public class ScheduledService {
                     entityToUpdate.setStock(stock);
                     stocksRepository.save(entityToUpdate);
 
-                    if (existingEntity.size() > 1) {
-                        for (int i = 1; i < existingEntity.size(); i++) {
-                            stocksRepository.delete(existingEntity.get(i));
-                        }
-                    }
                 } else {
                     Stocks newStocks = new Stocks();
                     newStocks.setTicker(ticker);
@@ -87,12 +82,6 @@ public class ScheduledService {
 
                 entityToUpdate.setRevenue(revenue);
                 entityToUpdate.setEps(eps);
-
-                if (existingEntity.size() > 1) {
-                    for (int i = 1; i < existingEntity.size(); i++) {
-                        stocksRepository.delete(existingEntity.get(i));
-                    }
-                }
 
                 stocksRepository.save(entityToUpdate);
             } else {
