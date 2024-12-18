@@ -34,14 +34,12 @@ public class ScheduledService {
     String apiKey;
 
     private final WebClient webClient;
-    private final ObjectMapper mapper;
     private TickersRepository tickersRepository = null;
     private StocksRepository stocksRepository = null;
     public ScheduledService(WebClient webClient, TickersRepository tickersRepository, StocksRepository stocksRepository) {
         this.webClient = webClient;
         this.tickersRepository = tickersRepository;
         this.stocksRepository = stocksRepository;
-        this.mapper = new ObjectMapper();
     }
 
     public void addTicker(String shortName, String fullName, String type) {
@@ -179,14 +177,14 @@ public class ScheduledService {
                 LocalDate curDate = LocalDate.now();
                 LocalDate fiveYearsAgo = curDate.minusYears(6);
                 webClient.get()
-                        .uri("/v2/aggs/ticker/{ticker}/range/1/year/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
+                        .uri("/v2/aggs/ticker/{ticker}/range/1/day/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
                         .retrieve()
                         .bodyToMono(JsonNode.class)
                         .onErrorResume(e -> {
                             System.out.println("ERROR: Get One Stock Info Failed");
                             return Mono.empty();
                         })
-                        .flatMap(response -> {
+                        .subscribe(response -> {
                             response.path("results").forEach(result -> {
                                 String year = CalculatorUtils.convertTimestampToDate(result.path("t").asLong());
 
@@ -196,7 +194,6 @@ public class ScheduledService {
 
                                 addStock(ticker, year, result.path("vw").asDouble());
                             });
-                            return Mono.empty();
                         });
             } catch (Exception e) {
                 System.out.println("ERROR (asyncGetOneStockInfo): [" + ticker + "]" + e.getMessage());
@@ -221,7 +218,7 @@ public class ScheduledService {
                             System.out.println("ERROR: Get One Financial Info Failed");
                             return Mono.empty();
                         })
-                        .flatMap(financialData -> {
+                        .subscribe(financialData -> {
                             financialData.path("results").forEach(result -> {
                                 String year = result.path("fiscal_year").asText();
                                 if (isTTM) {
@@ -231,7 +228,6 @@ public class ScheduledService {
                                         result.path("financials").path("income_statement").path("revenues").path("value").asDouble(),
                                         result.path("financials").path("income_statement").path("diluted_earnings_per_share").path("value").asDouble());
                             });
-                            return Mono.empty();
                         });
             } catch (Exception e) {
                 System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());

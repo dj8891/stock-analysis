@@ -178,8 +178,8 @@ public class CalculatorUtils {
         Stocks lastStocks = findStockByTickerAndYear(allStocks, ticker, (endYear == LocalDate.now().getYear() ? "TTM" : String.valueOf(endYear)));
         Stocks startStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear));
         if(lastStocks.getTicker().isEmpty() && !indicator.equals("stock")) {
-                tmpEndYear--;
-                lastStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpEndYear));
+            tmpEndYear--;
+            lastStocks = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpEndYear));
         }
 
         Stocks startStock1 = findStockByTickerAndYear(allStocks, ticker, String.valueOf(tmpStartYear + 1));

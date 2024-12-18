@@ -30,16 +30,16 @@ public class ApplicationConfiguration {
     @Bean
     public WebClient webClient(WebClient.Builder builder) {
         ConnectionProvider connectionProvider = ConnectionProvider.builder("custom")
-                .maxIdleTime(Duration.ofSeconds(120)) // Set max idle time
+                .maxIdleTime(Duration.ofSeconds(120))
                 .evictInBackground(Duration.ofSeconds(19))
-                // Optional: set max lifetime for connections
+                .maxConnections(30000)
+                .pendingAcquireMaxCount(30000)
                 .build();
 
         // Create an HttpClient using the ConnectionProvider
         HttpClient httpClient = HttpClient.create(connectionProvider)
                 .option(ChannelOption.SO_KEEPALIVE, true)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000) // Connection timeout (5 seconds)
-                .responseTimeout(Duration.ofSeconds(120))
+                .responseTimeout(Duration.ofSeconds(120)) // Response timeout (120 seconds)
                 .doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(30))); // Read timeout (30 seconds)
         // Configure WebClient with the customized HttpClient
         return builder
