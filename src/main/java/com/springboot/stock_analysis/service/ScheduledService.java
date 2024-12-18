@@ -174,7 +174,7 @@ public class ScheduledService {
                 LocalDate curDate = LocalDate.now();
                 LocalDate fiveYearsAgo = curDate.minusYears(6);
                 webClient.get()
-                        .uri("/v2/aggs/ticker/{ticker}/range/1/day/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
+                        .uri("/v2/aggs/ticker/{ticker}/range/1/year/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
                         .retrieve()
                         .bodyToMono(JsonNode.class)
                         .onErrorResume(e -> {
@@ -215,7 +215,7 @@ public class ScheduledService {
                         .retrieve()
                         .bodyToMono(JsonNode.class)
                         .onErrorResume(e -> {
-                            System.out.println("ERROR: Get One Financial Info Failed");
+                            System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
                             return Mono.empty();
                         })
                         .subscribe(financialData -> {
@@ -378,7 +378,7 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTask, 5 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTask, 3 * 60, period, TimeUnit.SECONDS);
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
