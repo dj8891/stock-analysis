@@ -9,10 +9,12 @@ import com.springboot.stock_analysis.utils.CalculatorUtils;
 import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,12 +36,14 @@ public class ScheduledService {
     String apiKey;
 
     private final WebClient webClient;
+    private final ObjectMapper mapper;
     private TickersRepository tickersRepository = null;
     private StocksRepository stocksRepository = null;
     public ScheduledService(WebClient webClient, TickersRepository tickersRepository, StocksRepository stocksRepository) {
         this.webClient = webClient;
         this.tickersRepository = tickersRepository;
         this.stocksRepository = stocksRepository;
+        this.mapper = new ObjectMapper();
     }
 
     public void addTicker(String shortName, String fullName, String type) {
@@ -99,7 +103,7 @@ public class ScheduledService {
         }
     }
 
-     private Mono<JsonNode> fetchNewsWithCursor(String cursor) {
+    private Mono<JsonNode> fetchNewsWithCursor(String cursor) {
         return webClient.get()
                 .uri("/v3/reference/tickers?active=true&limit=1000&cursor={cursor}&apiKey={apiKey}", cursor, apiKey)
                 .retrieve()
@@ -169,36 +173,39 @@ public class ScheduledService {
     }
 
     public void asyncGetOneStockInfo(String ticker) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                LocalDate curDate = LocalDate.now();
-                LocalDate fiveYearsAgo = curDate.minusYears(6);
-                webClient.get()
-                        .uri("/v2/aggs/ticker/{ticker}/range/1/year/{fiveYears}/{curDate}?adjusted=true&sort=asc&apiKey={apiKey}", ticker, fiveYearsAgo.toString(), curDate.toString(), apiKey)
-                        .retrieve()
-                        .bodyToMono(JsonNode.class)
-                        .onErrorResume(e -> {
-                            System.out.println("ERROR (asyncGetOneStockInfo): [" + ticker + "]" + e.getMessage());
-                            return Mono.empty();
-                        })
-                        .subscribe(response -> {
-                            JsonNode results = response.path("results");
+        try {
+            LocalDate curDate = LocalDate.now();
+            LocalDate fiveYearsAgo = curDate.minusYears(6);
+            webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v2/aggs/ticker/{ticker}/range/1/year/{fiveYears}/{curDate}")
+                            .queryParam("adjusted", "true")
+                            .queryParam("sort", "asc")
+                            .queryParam("apiKey", apiKey)
+                            .build(ticker, fiveYearsAgo.toString(), curDate.toString()))
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .onErrorResume(e -> {
+                        System.out.println("ERROR (asyncGetOneStockInfo): [" + ticker + "] " + e.getMessage());
+                        return Mono.empty();
+                    })
+                    .subscribe(response -> {
+                        JsonNode results = response.path("results");
 
-                            if (results.isArray() && results.size() > 0) {
-                                JsonNode firstResult = results.get(0);
-                                String year = CalculatorUtils.convertTimestampToDate(firstResult.path("t").asLong());
+                        if (results.isArray() && results.size() > 0) {
+                            JsonNode firstResult = results.get(0);
+                            String year = CalculatorUtils.convertTimestampToDate(firstResult.path("t").asLong());
 
-                                if (!year.equals(String.valueOf(Year.now().getValue()))) {
-                                    addStock(ticker, year, firstResult.path("vw").asDouble());
-                                }
-                            } else {
-                                System.out.println("No results found for ticker: " + ticker);
+                            if (!year.equals(String.valueOf(Year.now().getValue()))) {
+                                addStock(ticker, year, firstResult.path("vw").asDouble());
                             }
-                        });
-            } catch (Exception e) {
-                System.out.println("ERROR (asyncGetOneStockInfo): [" + ticker + "]" + e.getMessage());
-            }
-        });
+                        } else {
+                            System.out.println("No results found for ticker: " + ticker);
+                        }
+                    });
+        } catch (Exception e) {
+            System.out.println("ERROR (asyncGetOneStockInfo): [" + ticker + "] " + e.getMessage());
+        }
     }
 
     public void asyncGetOneFinancialInfo(String ticker, boolean isTTM) {
@@ -314,71 +321,75 @@ public class ScheduledService {
         });
     }
 
+    public void getAllTickersStock() {
+        Mono<JsonNode> allTickers = getAllActiveTickers();
+        System.out.println("Get Stocks of All Tickers Started");
+        allTickers.subscribe(tickers -> {
+            if (tickers != null && tickers.has("tickers")) {
+                JsonNode tickerArray = tickers.path("tickers");
+                List<CompletableFuture<Void>> futures = new ArrayList<>();
+                int batchSize = 10;
+                int totalTickers = tickerArray.size();
+
+                for (int i = 0; i < totalTickers; i++) {
+                    String tickerName = tickerArray.get(i).path("ticker").asText();
+                    CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                            asyncGetOneStockInfo(tickerName);
+                        });
+
+                    futures.add(future);
+
+                    if (futures.size() == batchSize || i == totalTickers - 1) {
+                        CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+                        allOf.join();
+                        futures.clear();
+                    }
+                }
+            }
+        });
+    }
+
+    public void getAllTickersFinancialInfo() {
+        Mono<JsonNode> allTickers = getAllActiveTickers();
+        System.out.println("Get Financial of All Tickers Started");
+        allTickers.subscribe(tickers -> {
+            if (tickers != null && tickers.has("tickers")) {
+                JsonNode tickerArray = tickers.path("tickers");
+                List<CompletableFuture<Void>> futures = new ArrayList<>();
+                int batchSize = 10;
+                int totalTickers = tickerArray.size();
+
+                for (int i = 0; i < totalTickers; i++) {
+                    String tickerName = tickerArray.get(i).path("ticker").asText();
+                    CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                        asyncGetOneFinancialInfo(tickerName, false);
+                    });
+
+                    futures.add(future);
+
+                    if (futures.size() == batchSize || i == totalTickers - 1) {
+                        CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+                        allOf.join();
+                        futures.clear();
+                    }
+                }
+            }
+        });
+    }
+
     public void runDailyTask() {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         ScheduledExecutorService schedulerForAllTickers = Executors.newSingleThreadScheduledExecutor();
-        Runnable dailyTask = () -> CompletableFuture.runAsync(() -> {
-            System.out.println("GET Annual Data Started!");
-            try {
-                getAllActiveTickers()
-                        .flatMap(tickers -> {
-                            if (tickers != null && tickers.has("tickers")) {
-                                JsonNode allTickers = tickers.path("tickers");
-                                return Flux.fromIterable(allTickers)
-                                        .index()  // Add index to control batching
-                                        .flatMap(indexed -> {
-                                            int i = Math.toIntExact(indexed.getT1());
-                                            JsonNode tickerData = indexed.getT2();
-                                            String ticker = tickerData.path("ticker").asText();
-
-                                            asyncGetOneStockInfo(ticker);
-                                            asyncGetOneFinancialInfo(ticker, false);
-
-                                            // Add a non-blocking delay after every 50 tickers
-                                            if (i > 0 && i % 50 == 0) {
-                                                return Mono.delay(Duration.ofMillis(500));
-                                            }
-                                            return Mono.empty();
-                                        })
-                                        .then(Mono.fromRunnable(() -> {
-                                            System.out.println("GET Annual Data completed!");
-                                        }));
-                            } else {
-                                System.out.println("LOG: CAN'T GET TICKERS");
-                                return Flux.fromIterable(tickersRepository.findAll())
-                                        .index()
-                                        .flatMap(indexed -> {
-                                            int i = Math.toIntExact(indexed.getT1());
-                                            Tickers tickerEntity = indexed.getT2();
-                                            String ticker = tickerEntity.getShortName();
-
-                                            asyncGetOneStockInfo(ticker);
-                                            asyncGetOneFinancialInfo(ticker, false);
-
-                                            // Delay after every 50 tickers
-                                            if (i > 0 && i % 50 == 0) {
-                                                return Mono.delay(Duration.ofMillis(500));
-                                            }
-                                            return Mono.empty();
-                                        })
-                                        .then(Mono.fromRunnable(() -> {
-                                            System.out.println("GET Annual Data completed!");
-                                        }));
-                            }
-                        })
-                        .doOnError(e -> System.out.println("ERROR: GET Annual Data " + e.getMessage()))
-                        .subscribe();
-            } catch (Exception e) {
-                System.out.println("ERROR: GET Annual Data " + e.getMessage());
-            }
-        });
 
         Runnable dailyTaskForTickers = () -> CompletableFuture.runAsync(this::getAllTickers);
-        // Calculate the initial delay until the first execution
+        Runnable dailyTaskForStockInfo = () ->CompletableFuture.runAsync(this::getAllTickersStock);
+        Runnable dailyTaskForFinancialInfo = () ->CompletableFuture.runAsync(this::getAllTickersFinancialInfo);
+
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTask, 3 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 5 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 15 * 60, period, TimeUnit.SECONDS);
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

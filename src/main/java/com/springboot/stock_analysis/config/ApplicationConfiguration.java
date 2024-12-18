@@ -32,14 +32,14 @@ public class ApplicationConfiguration {
         ConnectionProvider connectionProvider = ConnectionProvider.builder("custom")
                 .maxIdleTime(Duration.ofSeconds(120))
                 .evictInBackground(Duration.ofSeconds(19))
-                .maxConnections(30000)
+                .maxConnections(1000)
                 .pendingAcquireMaxCount(30000)
                 .build();
 
         // Create an HttpClient using the ConnectionProvider
         HttpClient httpClient = HttpClient.create(connectionProvider)
                 .option(ChannelOption.SO_KEEPALIVE, true)
-                .responseTimeout(Duration.ofSeconds(120)) // Response timeout (120 seconds)
+                .responseTimeout(Duration.ofSeconds(60)) // Response timeout (120 seconds)
                 .doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(30))); // Read timeout (30 seconds)
         // Configure WebClient with the customized HttpClient
         return builder
