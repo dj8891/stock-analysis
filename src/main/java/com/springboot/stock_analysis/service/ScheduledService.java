@@ -389,7 +389,7 @@ public class ScheduledService {
 
         // Schedule the task to run daily
         scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 5 * 60, period, TimeUnit.SECONDS);
-        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 15 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 20 * 60, period, TimeUnit.SECONDS);
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
