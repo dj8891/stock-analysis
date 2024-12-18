@@ -181,19 +181,22 @@ public class ScheduledService {
                         .retrieve()
                         .bodyToMono(JsonNode.class)
                         .onErrorResume(e -> {
-                            System.out.println("ERROR: Get One Stock Info Failed");
+                            System.out.println("ERROR (asyncGetOneStockInfo): [" + ticker + "]" + e.getMessage());
                             return Mono.empty();
                         })
                         .subscribe(response -> {
-                            response.path("results").forEach(result -> {
-                                String year = CalculatorUtils.convertTimestampToDate(result.path("t").asLong());
+                            JsonNode results = response.path("results");
 
-                                if (year.equals(String.valueOf(Year.now().getValue()))) {
-                                    return;
+                            if (results.isArray() && results.size() > 0) {
+                                JsonNode firstResult = results.get(0);
+                                String year = CalculatorUtils.convertTimestampToDate(firstResult.path("t").asLong());
+
+                                if (!year.equals(String.valueOf(Year.now().getValue()))) {
+                                    addStock(ticker, year, firstResult.path("vw").asDouble());
                                 }
-
-                                addStock(ticker, year, result.path("vw").asDouble());
-                            });
+                            } else {
+                                System.out.println("No results found for ticker: " + ticker);
+                            }
                         });
             } catch (Exception e) {
                 System.out.println("ERROR (asyncGetOneStockInfo): [" + ticker + "]" + e.getMessage());
