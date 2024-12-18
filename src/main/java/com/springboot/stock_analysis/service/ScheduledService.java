@@ -53,21 +53,23 @@ public class ScheduledService {
     public void addStock(String ticker, String year, double stock) {
         CompletableFuture.runAsync(() -> {
             try {
-                Optional<Stocks> existingEntity = stocksRepository.findByTickerAndYear(ticker, year);
+                List<Stocks> existingEntity = stocksRepository.findByTickerAndYear(ticker, year);
 
-                if (existingEntity.isPresent()) {
-                    Stocks entityToUpdate = existingEntity.get();
-
+                if (!existingEntity.isEmpty()) {
+                    Stocks entityToUpdate = existingEntity.get(0); // Use the first record
                     entityToUpdate.setStock(stock);
-
                     stocksRepository.save(entityToUpdate);
+
+                    if (existingEntity.size() > 1) {
+                        for (int i = 1; i < existingEntity.size(); i++) {
+                            stocksRepository.delete(existingEntity.get(i));
+                        }
+                    }
                 } else {
                     Stocks newStocks = new Stocks();
-
                     newStocks.setTicker(ticker);
                     newStocks.setYear(year);
                     newStocks.setStock(stock);
-
                     stocksRepository.save(newStocks);
                 }
             } catch (Exception e) {
@@ -78,13 +80,19 @@ public class ScheduledService {
 
     public void addRevenueAndEps(String ticker, String year, double revenue, double eps) {
         try {
-            Optional<Stocks> existingEntity = stocksRepository.findByTickerAndYear(ticker, year);
+            List<Stocks> existingEntity = stocksRepository.findByTickerAndYear(ticker, year);
 
-            if (existingEntity.isPresent()) {
-                Stocks entityToUpdate = existingEntity.get();
+            if (!existingEntity.isEmpty()) {
+                Stocks entityToUpdate = existingEntity.get(0);
 
                 entityToUpdate.setRevenue(revenue);
                 entityToUpdate.setEps(eps);
+
+                if (existingEntity.size() > 1) {
+                    for (int i = 1; i < existingEntity.size(); i++) {
+                        stocksRepository.delete(existingEntity.get(i));
+                    }
+                }
 
                 stocksRepository.save(entityToUpdate);
             } else {

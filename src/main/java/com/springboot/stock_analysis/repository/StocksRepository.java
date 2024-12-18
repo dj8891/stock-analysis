@@ -16,7 +16,8 @@ public interface StocksRepository extends JpaRepository<Stocks, Long> {
     @Query("SELECT DISTINCT s.ticker FROM Stocks s")
     public List<String> findDistinctByTicker();
 
-    Optional<Stocks> findByTickerAndYear(String ticker, String year);
+    @Query("SELECT s FROM Stocks s WHERE s.ticker = :ticker AND s.year = :year")
+    List<Stocks> findByTickerAndYear(@Param("ticker") String ticker, @Param("year") String year);
 
     @Query("SELECT s FROM Stocks s WHERE s.ticker = :ticker AND s.year != 'ttm' ORDER BY s.year DESC")
     Optional<Stocks> getPrevYearStock(@Param("ticker") String ticker);
