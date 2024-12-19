@@ -209,37 +209,35 @@ public class ScheduledService {
     }
 
     public void asyncGetOneFinancialInfo(String ticker, boolean isTTM) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                String tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=annual&limit=6&apiKey={apiKey}";
+        try {
+            String tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=annual&limit=6&apiKey={apiKey}";
 
-                if (isTTM) {
-                    tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=ttm&apiKey={apiKey}";
-                }
-
-                webClient.get()
-                        .uri(tmpUri, ticker, apiKey)
-                        .retrieve()
-                        .bodyToMono(JsonNode.class)
-                        .onErrorResume(e -> {
-                            System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
-                            return Mono.empty();
-                        })
-                        .subscribe(financialData -> {
-                            financialData.path("results").forEach(result -> {
-                                String year = result.path("fiscal_year").asText();
-                                if (isTTM) {
-                                    year = "TTM";
-                                }
-                                addRevenueAndEps(ticker, year,
-                                        result.path("financials").path("income_statement").path("revenues").path("value").asDouble(),
-                                        result.path("financials").path("income_statement").path("diluted_earnings_per_share").path("value").asDouble());
-                            });
-                        });
-            } catch (Exception e) {
-                System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
+            if (isTTM) {
+                tmpUri = "/vX/reference/financials?ticker={ticker}&timeframe=ttm&apiKey={apiKey}";
             }
-        });
+
+            webClient.get()
+                    .uri(tmpUri, ticker, apiKey)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .onErrorResume(e -> {
+                        System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
+                        return Mono.empty();
+                    })
+                    .subscribe(financialData -> {
+                        financialData.path("results").forEach(result -> {
+                            String year = result.path("fiscal_year").asText();
+                            if (isTTM) {
+                                year = "TTM";
+                            }
+                            addRevenueAndEps(ticker, year,
+                                    result.path("financials").path("income_statement").path("revenues").path("value").asDouble(),
+                                    result.path("financials").path("income_statement").path("diluted_earnings_per_share").path("value").asDouble());
+                        });
+                    });
+        } catch (Exception e) {
+            System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
+        }
     }
 
     public void getInfo() {
@@ -344,6 +342,13 @@ public class ScheduledService {
                         allOf.join();
                         futures.clear();
                     }
+
+                    if(i % 1000 == 0) {
+                        System.out.println("Stock Info Waiting: " + i / 1000);
+                        Mono.delay(Duration.ofSeconds(180))
+                                .doOnNext(ignored -> System.out.println("Resuming after delay"))
+                                .block();
+                    }
                 }
             }
         });
@@ -372,6 +377,13 @@ public class ScheduledService {
                         allOf.join();
                         futures.clear();
                     }
+
+                    if(i % 1000 == 0) {
+                        System.out.println("Financial Info Waiting: " + i / 1000);
+                        Mono.delay(Duration.ofSeconds(180))
+                            .doOnNext(ignored -> System.out.println("Resuming after delay"))
+                            .block();
+                    }
                 }
             }
         });
@@ -388,8 +400,8 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 5 * 60, period, TimeUnit.SECONDS);
-        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 20 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 5 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 65 * 60, period, TimeUnit.SECONDS);
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
