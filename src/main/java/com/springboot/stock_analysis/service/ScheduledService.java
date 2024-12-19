@@ -193,12 +193,14 @@ public class ScheduledService {
                         JsonNode results = response.path("results");
 
                         if (results.isArray() && results.size() > 0) {
-                            JsonNode firstResult = results.get(0);
-                            String year = CalculatorUtils.convertTimestampToDate(firstResult.path("t").asLong());
+                            for (JsonNode result : results) {
+                                String year = CalculatorUtils.convertTimestampToDate(result.path("t").asLong());
 
-                            if (!year.equals(String.valueOf(Year.now().getValue()))) {
-                                addStock(ticker, year, firstResult.path("vw").asDouble());
+                                if (!year.equals(String.valueOf(Year.now().getValue()))) {
+                                    addStock(ticker, year, result.path("vw").asDouble());
+                                }
                             }
+
                         } else {
                             System.out.println("No results found for ticker: " + ticker);
                         }
