@@ -293,28 +293,32 @@ public class ScheduledService {
                 int batchSize = 10;
                 int totalTickers = tickerArray.size();
 
-                for (int i = 0; i < totalTickers; i++) {
-                    String tickerName = tickerArray.get(i).path("ticker").asText();
-                    CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                        asyncGetOneFinancialInfo(tickerName, false);
-                        asyncGetOneFinancialInfo(tickerName, true);
-                    });
+                Flux.range(0, totalTickers)
+                        .concatMap(i -> {
+                            String tickerName = tickerArray.get(i).path("ticker").asText();
 
-                    futures.add(future);
+                            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                                asyncGetOneFinancialInfo(tickerName, false);
+                                asyncGetOneFinancialInfo(tickerName, true);
+                            });
 
-                    if (futures.size() == batchSize || i == totalTickers - 1) {
-                        CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
-                        allOf.join();
-                        futures.clear();
-                    }
+                            futures.add(future);
 
-                    if(i % 1000 == 0) {
-                        System.out.println("Financial Info Waiting: " + i / 1000);
-                        Mono.delay(Duration.ofSeconds(180))
-                            .doOnNext(ignored -> System.out.println("Resuming after delay"))
-                            .subscribe();
-                    }
-                }
+                            if (futures.size() == batchSize || i == totalTickers - 1) {
+                                CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+                                allOf.join();
+                                futures.clear();
+                            }
+
+                            if (i % 1000 == 0) {
+                                System.out.println("Stock Info Waiting: " + i / 1000);
+                                return Mono.delay(Duration.ofSeconds(120)).then();
+                            }
+
+                            return Mono.empty();
+                        })
+                        .then()
+                        .subscribe();
             }
         });
     }
@@ -330,8 +334,8 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
-        //scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 5 * 60, period, TimeUnit.SECONDS);
+        //scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 5 * 60, period, TimeUnit.SECONDS);
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -355,6 +359,6 @@ public class ScheduledService {
 
     @PostConstruct
     public void onStartup() {
-        //runDailyTask();
+        runDailyTask();
     }
 }
