@@ -270,11 +270,14 @@ public class ScheduledService {
                             futures.clear();
                         }
 
-                        if (i % 1000 == 0) {
-                            System.out.println("Stock Info Waiting: " + i / 1000);
+                        if (i % 500 == 0) {
+                            System.out.println("Stock Info Waiting: " + i / 500);
                             return Mono.delay(Duration.ofSeconds(120)).then();
                         }
 
+                        if( i == totalTickers - 1) {
+                            System.out.println("Get Stocks of All Tickers Completed");
+                        }
                         return Mono.empty();
                     })
                     .then()
@@ -316,6 +319,10 @@ public class ScheduledService {
                                 return Mono.delay(Duration.ofSeconds(20)).then();
                             }
 
+                            if( i == totalTickers - 1) {
+                                System.out.println("Get Financial of All Tickers Completed");
+                            }
+
                             return Mono.empty();
                         })
                         .then()
@@ -335,9 +342,10 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        //scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
-        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 5 * 60, period, TimeUnit.SECONDS);
-        //schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
+        schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 60 * 60, period, TimeUnit.SECONDS );
+        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 300 * 60, period, TimeUnit.SECONDS);
+
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Shutting down executors...");
