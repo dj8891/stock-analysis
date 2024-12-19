@@ -222,6 +222,7 @@ public class ScheduledService {
                     .uri(tmpUri, ticker, apiKey)
                     .retrieve()
                     .bodyToMono(JsonNode.class)
+                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(5)))
                     .onErrorResume(e -> {
                         System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
                         return Mono.empty();

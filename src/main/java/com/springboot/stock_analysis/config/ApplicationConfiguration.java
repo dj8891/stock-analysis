@@ -2,6 +2,7 @@ package com.springboot.stock_analysis.config;
 
 import com.springboot.stock_analysis.repository.UserRepository;
 import io.netty.channel.ChannelOption;
+import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
+import reactor.netty.tcp.SslProvider;
+
 
 import java.time.Duration;
 
@@ -30,25 +33,29 @@ public class ApplicationConfiguration {
     @Bean
     public WebClient webClient(WebClient.Builder builder) {
         ConnectionProvider connectionProvider = ConnectionProvider.builder("custom")
-                .maxIdleTime(Duration.ofSeconds(120))
-                .evictInBackground(Duration.ofSeconds(19))
-                .maxConnections(1000)
-                .pendingAcquireMaxCount(30000)
-                .build();
+            .maxIdleTime(Duration.ofSeconds(120))
+            .evictInBackground(Duration.ofSeconds(19))
+            .maxConnections(1000)
+            .pendingAcquireMaxCount(30000)
+            .build();
 
         // Create an HttpClient using the ConnectionProvider
         HttpClient httpClient = HttpClient.create(connectionProvider)
                 .option(ChannelOption.SO_KEEPALIVE, true)
-                .responseTimeout(Duration.ofSeconds(60)) // Response timeout (120 seconds)
-                .doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(30))); // Read timeout (30 seconds)
+                .responseTimeout(Duration.ofSeconds(60))
+                .doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(30)))
+                .secure(sslContextSpec -> sslContextSpec.sslContext(SslContextBuilder.forClient())
+                .defaultConfiguration(SslProvider.DefaultConfigurationType.TCP)
+                .handshakeTimeout(Duration.ofSeconds(30))); // Set handshake timeout
+
         // Configure WebClient with the customized HttpClient
         return builder
-                .baseUrl(baseUrl)
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .codecs(configurer -> configurer
-                        .defaultCodecs()
-                        .maxInMemorySize(128 * 1024 * 1024))
-                .build();
+            .baseUrl(baseUrl)
+            .clientConnector(new ReactorClientHttpConnector(httpClient))
+            .codecs(configurer -> configurer
+                    .defaultCodecs()
+                    .maxInMemorySize(128 * 1024 * 1024))
+            .build();
     }
 
     private final UserRepository userRepository;
