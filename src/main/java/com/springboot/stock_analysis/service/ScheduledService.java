@@ -330,7 +330,7 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 5 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
         //scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 5 * 60, period, TimeUnit.SECONDS);
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
 
@@ -355,6 +355,6 @@ public class ScheduledService {
 
     @PostConstruct
     public void onStartup() {
-        runDailyTask();
+        //runDailyTask();
     }
 }
