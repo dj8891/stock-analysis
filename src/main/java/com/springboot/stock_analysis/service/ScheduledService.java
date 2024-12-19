@@ -311,9 +311,9 @@ public class ScheduledService {
                                 futures.clear();
                             }
 
-                            if (i % 1000 == 0) {
-                                System.out.println("Stock Info Waiting: " + i / 1000);
-                                return Mono.delay(Duration.ofSeconds(120)).then();
+                            if (i % 100 == 0) {
+                                System.out.println("Stock Info Waiting: " + i / 100);
+                                return Mono.delay(Duration.ofSeconds(20)).then();
                             }
 
                             return Mono.empty();
@@ -337,7 +337,7 @@ public class ScheduledService {
         // Schedule the task to run daily
         //scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
         scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 5 * 60, period, TimeUnit.SECONDS);
-        schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
+        //schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 80 * 60, period, TimeUnit.SECONDS );
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Shutting down executors...");
