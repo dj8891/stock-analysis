@@ -240,6 +240,10 @@ public class ScheduledService {
         }
     }
 
+    public void getTTMInfo() {
+
+    }
+
     public void getInfo() {
         // Use a CompletableFuture to execute the async logic
         CompletableFuture.runAsync(() -> {
@@ -329,30 +333,34 @@ public class ScheduledService {
                 int batchSize = 10;
                 int totalTickers = tickerArray.size();
 
-                for (int i = 0; i < totalTickers; i++) {
-                    String tickerName = tickerArray.get(i).path("ticker").asText();
-                    CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                Flux.range(0, totalTickers)
+                    .concatMap(i -> {
+                        String tickerName = tickerArray.get(i).path("ticker").asText();
+                        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                             asyncGetOneStockInfo(tickerName);
                         });
 
-                    futures.add(future);
+                        futures.add(future);
 
-                    if (futures.size() == batchSize || i == totalTickers - 1) {
-                        CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
-                        allOf.join();
-                        futures.clear();
-                    }
+                        if (futures.size() == batchSize || i == totalTickers - 1) {
+                            CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+                            allOf.join();
+                            futures.clear();
+                        }
 
-                    if(i % 1000 == 0) {
-                        System.out.println("Stock Info Waiting: " + i / 1000);
-                        Mono.delay(Duration.ofSeconds(180))
-                            .doOnNext(ignored -> System.out.println("Resuming after delay"))
-                            .subscribe();
-                    }
-                }
+                        if (i % 1000 == 0) {
+                            System.out.println("Stock Info Waiting: " + i / 1000);
+                            return Mono.delay(Duration.ofSeconds(120)).then();
+                        }
+
+                        return Mono.empty();
+                    })
+                    .then()
+                    .subscribe();
             }
         });
     }
+
 
     public void getAllTickersFinancialInfo() {
         Mono<JsonNode> allTickers = getAllActiveTickers();
@@ -425,7 +433,7 @@ public class ScheduledService {
 
     @PostConstruct
     public void onStartup() {
-        getInfo();
+        //getInfo();
         runDailyTask();
     }
 }
