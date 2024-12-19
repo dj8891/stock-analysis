@@ -242,89 +242,6 @@ public class ScheduledService {
         }
     }
 
-    public void getTTMInfo() {
-
-    }
-
-    public void getInfo() {
-        // Use a CompletableFuture to execute the async logic
-        CompletableFuture.runAsync(() -> {
-            getAllActiveTickers()
-                    .flatMap(tickers -> {
-                        if (tickers != null && tickers.has("tickers")) {
-                            JsonNode allTickers = tickers.path("tickers");
-                            System.out.println("LOG: Getting info started!");
-                            return Flux.fromIterable(allTickers)
-                                    .index()  // Get the index to control batching
-                                    .flatMap(indexed -> {
-                                        int i = Math.toIntExact(indexed.getT1());
-                                        JsonNode tickerData = indexed.getT2();
-                                        String ticker = tickerData.path("ticker").asText();
-
-                                        addStock(ticker, "TTM", tickerData.path("day").path("vw").asDouble());
-                                        asyncGetOneFinancialInfo(ticker, true);
-
-                                        // Introduce a non-blocking delay after every 50 tickers
-                                        if (i > 0 && i % 50 == 0) {
-                                            return Mono.delay(Duration.ofMillis(500));
-                                        }
-                                        return Mono.empty();
-                                    })
-                                    .then(Mono.fromRunnable(() -> {
-                                        System.out.println("LOG: Getting Stock TTM Completed!");
-                                        System.out.println("LOG: Getting Financial Info Completed!");
-                                    }))
-                                    .onErrorResume(e -> {
-                                        System.out.println("LOG: ERROR____: " + e.getMessage());
-                                        return Mono.empty();
-                                    });
-                        } else {
-                            // If tickers can't be fetched, fall back to using the local repository
-                            System.out.println("LOG: CAN'T GET TICKERS");
-                            return Flux.fromIterable(tickersRepository.findAll())
-                                    .index()
-                                    .flatMap(indexed -> {
-                                        int i = Math.toIntExact(indexed.getT1());
-                                        Tickers tickerEntity = indexed.getT2();
-                                        String ticker = tickerEntity.getShortName();
-
-                                        asyncGetOneFinancialInfo(ticker, true);
-
-                                        // Make individual requests for each ticker
-                                        return webClient.get()
-                                                .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
-                                                .retrieve()
-                                                .bodyToMono(JsonNode.class)
-                                                .onErrorResume(e -> {
-                                                    System.out.println("ERROR: Get Ticker Data By Ticker");
-                                                    return Mono.empty();
-                                                })
-                                                .flatMap(tickerData -> {
-                                                    if (tickerData != null) {
-                                                        addStock(ticker, "TTM", tickerData.path("ticker").path("day").path("vw").asDouble());
-                                                    } else {
-                                                        System.out.println("ERROR: Ticker Data Get Failed!");
-                                                    }
-
-                                                    // Introduce a longer delay after every 50 tickers
-                                                    if (i > 0 && i % 50 == 0) {
-                                                        return Mono.delay(Duration.ofMillis(500));
-                                                    }
-                                                    return Mono.empty();
-                                                });
-                                    })
-                                    .then(Mono.fromRunnable(() -> {
-                                        System.out.println("LOG: Getting Financial Info Completed!");
-                                    }));
-                        }
-                    })
-                    .then(Mono.delay(Duration.ofMinutes(30)))
-                    .doOnSuccess(ignored -> this.getInfo())
-                    .doOnError(e -> System.out.println("ERROR (getInfo): " + e.getMessage()))
-                    .subscribe(); // Start the reactive flow asynchronously
-        });
-    }
-
     public void getAllTickersStock() {
         Mono<JsonNode> allTickers = getAllActiveTickers();
         System.out.println("Get Stocks of All Tickers Started");
@@ -338,6 +255,8 @@ public class ScheduledService {
                 Flux.range(0, totalTickers)
                     .concatMap(i -> {
                         String tickerName = tickerArray.get(i).path("ticker").asText();
+
+                        addStock(tickerName, "TTM", tickerArray.get(i).path("day").path("vw").asDouble());
                         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                             asyncGetOneStockInfo(tickerName);
                         });
@@ -378,6 +297,7 @@ public class ScheduledService {
                     String tickerName = tickerArray.get(i).path("ticker").asText();
                     CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                         asyncGetOneFinancialInfo(tickerName, false);
+                        asyncGetOneFinancialInfo(tickerName, true);
                     });
 
                     futures.add(future);
@@ -435,7 +355,6 @@ public class ScheduledService {
 
     @PostConstruct
     public void onStartup() {
-        //getInfo();
         runDailyTask();
     }
 }
