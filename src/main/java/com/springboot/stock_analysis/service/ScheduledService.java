@@ -346,8 +346,8 @@ public class ScheduledService {
                     if(i % 1000 == 0) {
                         System.out.println("Stock Info Waiting: " + i / 1000);
                         Mono.delay(Duration.ofSeconds(180))
-                                .doOnNext(ignored -> System.out.println("Resuming after delay"))
-                                .block();
+                            .doOnNext(ignored -> System.out.println("Resuming after delay"))
+                            .subscribe();
                     }
                 }
             }
@@ -382,7 +382,7 @@ public class ScheduledService {
                         System.out.println("Financial Info Waiting: " + i / 1000);
                         Mono.delay(Duration.ofSeconds(180))
                             .doOnNext(ignored -> System.out.println("Resuming after delay"))
-                            .block();
+                            .subscribe();
                     }
                 }
             }
