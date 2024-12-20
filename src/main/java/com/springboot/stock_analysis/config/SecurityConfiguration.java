@@ -1,5 +1,4 @@
 package com.springboot.stock_analysis.config;
-
 import com.springboot.stock_analysis.enums.RoleTypes;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,66 +18,67 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfiguration {
-  private final AuthenticationProvider authenticationProvider;
-  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AuthenticationProvider authenticationProvider;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-  public SecurityConfiguration(
-      JwtAuthenticationFilter jwtAuthenticationFilter,
-      AuthenticationProvider authenticationProvider
-  ) {
-    this.authenticationProvider = authenticationProvider;
-    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-  }
+    public SecurityConfiguration(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            AuthenticationProvider authenticationProvider
+    ) {
+        this.authenticationProvider = authenticationProvider;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
-  @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-    return httpSecurity
-        .cors(httpSecurityCorsConfigurer -> httpSecurityCorsConfigurer.configurationSource(corsConfigurationSource()))
-        .csrf(AbstractHttpConfigurer::disable)
-        .authorizeHttpRequests(auth -> {
-              auth.requestMatchers("/index.html",
-                      "/ads.txt",
-                      "/assets/**",
-                      "/",
-                      "/*.png",
-                      "/reset-password/**",
-                      "/forgot-password",
-                      "/login",
-                      "/pricing",
-                      "/term",
-                      "/privacy",
-                      "/security",
-                      "/disclaimer",
-                      "/emailpage",
-                      "/headlines",
-                      "/watchlists",
-                      "/stock/**",
-                      "/images/**",
-                      "/auth/**",
-                      "/payment/webhook",
-                      "/pdf/**").permitAll();
-              auth.requestMatchers("/polygon/**", "/watchlist/**").hasAnyAuthority(String.valueOf(RoleTypes.PREMIUM), String.valueOf(RoleTypes.FREE));
-              auth.anyRequest().authenticated();
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        return httpSecurity
+            .cors(httpSecurityCorsConfigurer -> httpSecurityCorsConfigurer.configurationSource(corsConfigurationSource()))
+            .csrf(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers("/index.html",
+                    "/ads.txt",
+                    "/assets/**",
+                    "/",
+                    "/*.png",
+                    "/reset-password/**",
+                    "/forgot-password",
+                    "/login",
+                    "/pricing",
+                    "/term",
+                    "/privacy",
+                    "/security",
+                    "/disclaimer",
+                    "/emailpage",
+                    "/headlines",
+                    "/watchlists",
+                    "/stock/**",
+                    "/images/**",
+                    "/auth/**",
+                    "/landing",
+                    "/payment/webhook",
+                    "/pdf/**").permitAll();
+                auth.requestMatchers("/polygon/**", "/watchlist/**").hasAnyAuthority(String.valueOf(RoleTypes.PREMIUM), String.valueOf(RoleTypes.FREE));
+                auth.anyRequest().authenticated();
             }
         )
         .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authenticationProvider(authenticationProvider)
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         .build();
-  }
+    }
 
-  @Bean
-  CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(List.of("*"));
-    configuration.setAllowedMethods(List.of("*"));
-    configuration.setAllowedHeaders(List.of("*"));
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("*"));
+        configuration.setAllowedMethods(List.of("*"));
+        configuration.setAllowedHeaders(List.of("*"));
 
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
 
-    source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/**", configuration);
 
-    return source;
-  }
+        return source;
+    }
 }
