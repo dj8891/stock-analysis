@@ -219,25 +219,25 @@ public class ScheduledService {
             }
 
             webClient.get()
-                    .uri(tmpUri, ticker, apiKey)
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(5)))
-                    .onErrorResume(e -> {
-                        System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
-                        return Mono.empty();
-                    })
-                    .subscribe(financialData -> {
-                        financialData.path("results").forEach(result -> {
-                            String year = result.path("fiscal_year").asText();
-                            if (isTTM) {
-                                year = "TTM";
-                            }
-                            addRevenueAndEps(ticker, year,
-                                    result.path("financials").path("income_statement").path("revenues").path("value").asDouble(),
-                                    result.path("financials").path("income_statement").path("diluted_earnings_per_share").path("value").asDouble());
-                        });
+                .uri(tmpUri, ticker, apiKey)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(5)))
+                .onErrorResume(e -> {
+                    System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
+                    return Mono.empty();
+                })
+                .subscribe(financialData -> {
+                    financialData.path("results").forEach(result -> {
+                        String year = result.path("fiscal_year").asText();
+                        if (isTTM) {
+                            year = "TTM";
+                        }
+                        addRevenueAndEps(ticker, year,
+                                result.path("financials").path("income_statement").path("revenues").path("value").asDouble(),
+                                result.path("financials").path("income_statement").path("diluted_earnings_per_share").path("value").asDouble());
                     });
+                });
         } catch (Exception e) {
             System.out.println("ERROR (asyncGetOneFinancialInfo): [" + ticker + "]" + e.getMessage());
         }
