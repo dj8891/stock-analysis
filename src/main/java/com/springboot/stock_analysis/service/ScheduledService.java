@@ -369,7 +369,7 @@ public class ScheduledService {
         schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 60 * 60, period, TimeUnit.SECONDS );
         scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
         scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 300 * 60, period, TimeUnit.SECONDS);
-        scheduler.scheduleAtFixedRate(hourlyTaskforTTMStockInfo, 2 * 60, 150 * 60, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(hourlyTaskforTTMStockInfo, 20 * 60, 150 * 60, TimeUnit.SECONDS);
 
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
