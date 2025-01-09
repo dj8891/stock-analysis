@@ -387,7 +387,7 @@ public class ScheduledService {
                 scheduler.shutdownNow();
                 schedulerForAllTickers.shutdownNow();
             }
-            System.out.println("Executors shut down.");
+            System.out.println("Executors shut down");
         }));
     }
 
