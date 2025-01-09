@@ -243,12 +243,24 @@ public class PolygonApiService {
                     .toLocalDateTime();
             Duration duration = Duration.between(publishDate, curDate);
             long totalSeconds = duration.getSeconds();
-            long hours = totalSeconds / 3600;    // 1 hour = 3600 seconds
+            long months = totalSeconds / (3600 * 24 * 7 * 4);
+            long weeks = (totalSeconds % (3600 * 24 * 7 * 4)) / (3600 * 24 * 7);
+            long days = (totalSeconds % (3600 * 24 * 7)) / (3600 * 24);
+            long hours = (totalSeconds % (3600 * 24)) / 3600;    // 1 hour = 3600 seconds
             long minutes = (totalSeconds % 3600) / 60; // Remaining minutes
             long seconds = totalSeconds % 60;    // Remaining seconds
 
             // Build user-friendly format
             StringBuilder timeFormatted = new StringBuilder();
+            if (months > 0) {
+                timeFormatted.append(months).append(" month").append(hours > 1 ? "s " : " ");
+            }
+            if (weeks > 0) {
+                timeFormatted.append(weeks).append(" week").append(hours > 1 ? "s " : " ");
+            }
+            if (days > 0) {
+                timeFormatted.append(days).append(" day").append(hours > 1 ? "s " : " ");
+            }
             if (hours > 0) {
                 timeFormatted.append(hours).append(" hour").append(hours > 1 ? "s " : " ");
             }
@@ -368,6 +380,10 @@ public class PolygonApiService {
 
                         if (val.path("results").has("type") && "ETF".equals(val.path("results").path("type").asText().trim())) {
                             locale = val.path("results").path("type").asText();
+                        }
+
+                        if(ticker.equals("BABA")) {
+                            locale = "BABA";
                         }
 
                         double epsTTM = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getEps();
