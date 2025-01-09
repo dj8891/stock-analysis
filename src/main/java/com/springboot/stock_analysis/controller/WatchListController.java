@@ -38,7 +38,7 @@ public class WatchListController {
                     .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null)).block(); // Handle errors
         }
         else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database Error");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Database Error.");
         }
     }
 
