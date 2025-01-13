@@ -117,12 +117,16 @@ public class UserService implements UserDetailsService {
 
     public List<UserDTO> getAllUsers() {
         List<User> users = userRepository.findAll();
-        System.out.println(users);
         List<UserDTO> userDtos = new ArrayList<>();
         for(User user : users) {
-            userDtos.add(new UserDTO(user.getEmail(), user.getPlanStatus(), user.getRole().toString(), user.getExpiryDate().toString(), user.getSubscribe().toString()));
+            userDtos.add(new UserDTO(
+                user.getEmail(),
+                user.getPlanStatus()!= null ? user.getPlanStatus() : null,
+                user.getRole() != null ? user.getRole().toString() : null,
+                user.getExpiryDate() != null ? user.getExpiryDate().toString() : null,
+                user.getSubscribe() != null ? user.getSubscribe().toString() : null
+            ));
         }
-        System.out.println(userDtos);
         return userDtos;
     }
 }
