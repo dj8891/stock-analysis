@@ -15,7 +15,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
         message.setSubject("Password Reset Request");
-        message.setText("Please note: This request will expire in 4 hours. \n Click the link below to reset your password:\n" + resetUrl);
+        message.setText("Please note: This request will expire in 4 hours. \nClick the link below to reset your password:\n" + resetUrl);
 
         mailSender.send(message);
     }

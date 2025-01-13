@@ -2,6 +2,7 @@ package com.springboot.stock_analysis.controller;
 
 import com.springboot.stock_analysis.dto.LoginResponseDTO;
 import com.springboot.stock_analysis.dto.RegisterRequestDTO;
+import com.springboot.stock_analysis.dto.UserDTO;
 import com.springboot.stock_analysis.enums.RoleTypes;
 import com.springboot.stock_analysis.model.User;
 import com.springboot.stock_analysis.service.AuthenticationService;
@@ -13,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,9 +42,10 @@ public class LoginController {
         try {
             boolean isTrialEnded = userService.checkPermission(loginUserDto.getEmail());
             User authenticatedUser = authenticationService.authenticate(loginUserDto);
+            String permission = userService.getRole(loginUserDto.getEmail());
             if(authenticatedUser != null) {
                 String jwtToken = jwtService.generateToken(authenticatedUser);
-                LoginResponseDTO response = new LoginResponseDTO(jwtToken, isTrialEnded);
+                LoginResponseDTO response = new LoginResponseDTO(jwtToken, isTrialEnded, permission);
                 return ResponseEntity.ok(response);
             } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not Found User");
@@ -52,6 +55,19 @@ public class LoginController {
         } catch (Exception e) {
             // Catch unexpected errors and log them
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred during login");
+        }
+    }
+
+    @PostMapping(path = "/check-permission")
+    public ResponseEntity<?> checkPermission(@RequestParam String email) {
+        try {
+            String permission = userService.getRole(email);
+            return ResponseEntity.ok(permission);
+        } catch (UsernameNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            // Catch unexpected errors and log them
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred during checking permission");
         }
     }
 
@@ -91,6 +107,16 @@ public class LoginController {
             return ResponseEntity.ok("Password has been reset successfully");
         } else {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid or expired token");
+        }
+    }
+
+    @GetMapping("/all-users")
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            List<UserDTO> userDTOList = userService.getAllUsers();
+            return ResponseEntity.ok(userDTOList);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 }

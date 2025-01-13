@@ -110,19 +110,19 @@ public class PolygonApiService {
 
     public Mono<Map<String, Double>> getAllETFData() {
             return webClient.get()
-                    .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers=SPY,DIA,QQQ,IWM&apiKey={apiKey}", apiKey)
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .map(value -> {
-                        Map<String, Double> returnValue = new HashMap<>();
-                        JsonNode tickers = value.path("tickers");
-                        for (JsonNode item : tickers) {
-                            String ticker = item.path("ticker").asText();
-                            double todaysChangePerc = item.path("todaysChangePerc").asDouble();
-                            returnValue.put(ticker, todaysChangePerc);
-                        }
-                        return returnValue;
-                    });
+                .uri("/v2/snapshot/locale/us/markets/stocks/tickers?tickers=SPY,DIA,QQQ,IWM&apiKey={apiKey}", apiKey)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .map(value -> {
+                    Map<String, Double> returnValue = new HashMap<>();
+                    JsonNode tickers = value.path("tickers");
+                    for (JsonNode item : tickers) {
+                        String ticker = item.path("ticker").asText();
+                        double todaysChangePerc = item.path("todaysChangePerc").asDouble();
+                        returnValue.put(ticker, todaysChangePerc);
+                    }
+                    return returnValue;
+                });
     }
 
     public List<PerformanceDTO> getPerformanceList() {

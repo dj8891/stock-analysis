@@ -3,9 +3,11 @@ package com.springboot.stock_analysis.dto;
 public class LoginResponseDTO {
     private String token;
     private Boolean isTrialEnded;
-    public LoginResponseDTO(String token, Boolean isTrialEnded) {
+    private String permission;
+    public LoginResponseDTO(String token, Boolean isTrialEnded, String permission) {
         this.token = token;
         this.isTrialEnded = isTrialEnded;
+        this.permission = permission;
     }
 
     public String getToken() {
@@ -22,5 +24,13 @@ public class LoginResponseDTO {
 
     public void setTrialEnded(Boolean trialEnded) {
         isTrialEnded = trialEnded;
+    }
+
+    public String getPermission() {
+        return permission;
+    }
+
+    public void setPermission(String permission) {
+        this.permission = permission;
     }
 }

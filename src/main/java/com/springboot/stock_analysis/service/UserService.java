@@ -1,5 +1,6 @@
 package com.springboot.stock_analysis.service;
 
+import com.springboot.stock_analysis.dto.UserDTO;
 import com.springboot.stock_analysis.enums.RoleTypes;
 import com.springboot.stock_analysis.model.PasswordResetToken;
 import com.springboot.stock_analysis.model.User;
@@ -11,11 +12,12 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService implements UserDetailsService {
@@ -77,13 +79,18 @@ public class UserService implements UserDetailsService {
 
     public boolean checkPermission(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("User not found with email:" + email));
-        if (user.getRole() != RoleTypes.PREMIUM && Optional.ofNullable(user.getExpiryDate())
+        if (user.getRole() != RoleTypes.PREMIUM && user.getRole() != RoleTypes.ADMIN && Optional.ofNullable(user.getExpiryDate())
                 .map(expiryDate -> expiryDate.isBefore(LocalDate.now()))
                 .orElse(false)) {
             user.setRole(RoleTypes.USER);
             userRepository.save(user);
             return true;
         } else return false;
+    }
+
+    public String getRole(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("User not found with email:" + email));
+        return user.getRole() == RoleTypes.ADMIN ? "ADMIN" : "USER";
     }
 
     public boolean subScribeCheck(String email) {
@@ -106,5 +113,14 @@ public class UserService implements UserDetailsService {
         else {
             return false;
         }
+    }
+
+    public List<UserDTO> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        List<UserDTO> userDtos = new ArrayList<>();
+        for(User user : users) {
+            userDtos.add(new UserDTO(user.getEmail(), user.getPlanStatus(), user.getRole().toString(), user.getExpiryDate().toString(), user.getSubscribe().toString()));
+        }
+        return userDtos;
     }
 }

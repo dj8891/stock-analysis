@@ -33,7 +33,7 @@ public class PolygonController {
                 .map(ResponseEntity::ok)  // Map the successful response to ResponseEntity
                 .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null)).block(); // Handle errors
     }
-////
+
     @GetMapping("/best-performance")
     public ResponseEntity<?> getPerformanceList() {
         if(polygonApiService.getPerformanceList() != null) {
