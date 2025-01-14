@@ -322,6 +322,49 @@ public class PolygonApiService {
         }
     }
 
+    public Mono<List<Map<String, String>>> searchNews(String keyword) {
+        //if (page == 0) { // no pagination
+            return webClient.get()
+                    .uri("/v2/reference/news?ticker={tickers}&order=desc&limit={limit}&sort=published_utc&apiKey={apiKey}", "", 50, apiKey)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .publishOn(Schedulers.boundedElastic())
+                    .map(this::processNews)
+                    .flatMap(newsList -> Flux.fromIterable(newsList)
+                            .filter(news -> containsKeyword(news, keyword))
+                            .collectList());
+//        } else { // pagination
+//            String finalTickers = "";
+//            return Mono.just(new PageInfoDTO("", 0))
+//                    .expand(pageInfo -> {
+//                        if (pageInfo.getPageNumber() >= page) return Mono.empty();
+//                        return this.fetchNewsWithCursor(finalTickers, pageInfo.getCursor(), Integer.parseInt(limit))
+//                                .flatMap(response -> {
+//                                    if (response.path("next_url").isMissingNode() || response.path("results").isEmpty()) {
+//                                        return Mono.empty(); // No more pages to fetch
+//                                    }
+//                                    // Increment page count and continue fetching with next cursor
+//                                    List<String> arr = List.of(response.path("next_url").asText().split("="));
+//                                    return Mono.just(new PageInfoDTO(arr.size() > 1 ? arr.get(1) : "", pageInfo.getPageNumber() + 1));
+//                                });
+//                    })
+//                    .filter(pageInfoDTO -> pageInfoDTO.getPageNumber() == page)
+//                    .flatMap(pageInfoDTO -> fetchNewsWithCursor(finalTickers, pageInfoDTO.getCursor(), Integer.parseInt(limit)))
+//                    .publishOn(Schedulers.boundedElastic())
+//                    .map(this::processNews)
+//                    .flatMap(Flux::fromIterable) // Flatten the emitted lists to individual maps
+//                    .filter(news -> containsKeyword(news, keyword)) // Filter by keyword in title or description
+//                    .collectList();
+//        }
+    }
+
+    private boolean containsKeyword(Map<String, String> news, String keyword) {
+        String title = news.getOrDefault("title", "").toLowerCase();
+        String description = news.getOrDefault("description", "").toLowerCase();
+        return title.contains(keyword.toLowerCase()) || description.contains(keyword.toLowerCase());
+    }
+
+
     public Mono<Map<String, String>> getStockData(String ticker) {
         JsonNode summary = webClient.get()
                 .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)

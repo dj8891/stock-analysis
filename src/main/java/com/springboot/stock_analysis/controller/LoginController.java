@@ -113,8 +113,6 @@ public class LoginController {
     @GetMapping("/all-users")
     public ResponseEntity<?> getAllUsers() {
         try {
-            System.out.println("**********************************************");
-            System.out.println("All Users are called");
             List<UserDTO> userDTOList = userService.getAllUsers();
             return ResponseEntity.ok(userDTOList);
         } catch (Exception e) {
