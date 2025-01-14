@@ -1,16 +1,18 @@
 package com.springboot.stock_analysis.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.springboot.stock_analysis.model.Tickers;
 import com.springboot.stock_analysis.model.Stocks;
+import com.springboot.stock_analysis.model.Screener;
 import com.springboot.stock_analysis.repository.TickersRepository;
 import com.springboot.stock_analysis.repository.StocksRepository;
+import com.springboot.stock_analysis.repository.ScreenerRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
 
 import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +26,6 @@ import reactor.core.publisher.Mono;
 import reactor.netty.http.client.PrematureCloseException;
 import reactor.util.retry.Retry;
 
-import java.util.Optional;
 import java.time.Year;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -39,11 +40,39 @@ public class ScheduledService {
     private final ObjectMapper mapper;
     private TickersRepository tickersRepository = null;
     private StocksRepository stocksRepository = null;
-    public ScheduledService(WebClient webClient, TickersRepository tickersRepository, StocksRepository stocksRepository) {
+    private ScreenerRepository screenerRepository = null;
+    private final CalculatorUtils calculatorUtils;
+    private final Map<String, List<Stocks>> allStocks = new HashMap<>();
+
+    public ScheduledService(WebClient webClient, TickersRepository tickersRepository, StocksRepository stocksRepository, ScreenerRepository screenerRepository,  CalculatorUtils calculatorUtils) {
         this.webClient = webClient;
         this.tickersRepository = tickersRepository;
         this.stocksRepository = stocksRepository;
+        this.screenerRepository = screenerRepository;
         this.mapper = new ObjectMapper();
+        this.calculatorUtils = calculatorUtils;
+
+        List<String> stockList = this.stocksRepository.findGroupedStocks();
+        for(String stock: stockList) {
+            String jsonString = "[" + stock + "]";
+            ObjectMapper objectMapper = new ObjectMapper();
+            try {
+                JsonNode jsonNode = objectMapper.readTree(jsonString);
+                ArrayList<Stocks> stocks = new ArrayList<>();
+                String ticker = "";
+                for (JsonNode node : jsonNode) {
+                    Double revenue = node.path("revenue").asDouble();
+                    Double eps = node.path("eps").asDouble();
+                    Double stockPrice = node.path("stock").asDouble();
+                    String year = node.path("year").asText();
+                    ticker = node.path("ticker").asText();
+                    stocks.add(new Stocks(ticker, year, stockPrice, eps, revenue));
+                }
+                this.allStocks.put(ticker, stocks);
+            } catch (JsonProcessingException e) {
+                System.out.println(e.getMessage());
+            }
+        }
     }
 
     public void addTicker(String shortName, String fullName, String type) {
@@ -101,6 +130,142 @@ public class ScheduledService {
         } catch (Exception e) {
             System.out.println("ERROR (addStock): " + e.getMessage());
         }
+    }
+
+    public void addScreener(String ticker) {
+        try {
+            Screener screener = new Screener(ticker);
+
+            JsonNode summary = webClient.get()
+                    .uri("/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .onErrorResume(e -> Mono.empty())
+                    .block();
+
+            if (summary != null) {
+                double stockPrice = summary.path("ticker")
+                        .path("day")
+                        .path("vw")
+                        .asDouble(0.0);
+                screener.setPrice(stockPrice);
+
+                int endYear = LocalDate.now().getYear() - 1;
+                int growthRating = this.calculatorUtils.growthEvaluation(allStocks, ticker, endYear);
+                int valueRating = this.calculatorUtils.valueCriteria(allStocks, ticker, endYear);
+                int performanceRating = this.calculatorUtils.performanceEvaluation(allStocks, ticker, endYear);
+
+                double growth = (growthRating / 10.0) * 4;
+                double value = (valueRating / 10.0) * 2.7;
+                double performance = (performanceRating / 10.0) * 3.3;
+                double stockScore = growth + value + performance;
+
+                screener.setScore(stockScore);
+
+                Tickers tickerModel = this.tickersRepository.findByShortName(ticker).orElse(new Tickers(ticker, "", ""));
+                String company = tickerModel.getFullName();
+                screener.setCompany(company);
+
+                JsonNode referenceData = webClient.get()
+                        .uri("/v3/reference/tickers/{ticker}?apiKey={apiKey}", ticker, apiKey)
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .block();
+
+                if (referenceData != null) {
+                    double marketCap = referenceData.path("results")
+                            .path("market_cap")
+                            .asDouble(0.0) / 1_000_000_000.0; // Convert to billions
+                    screener.setMarket_cap(marketCap);
+
+                    double epsTTM = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM").getEps();
+                    screener.setEps_ttm(epsTTM);
+
+                    double revenueGrowth = this.calculatorUtils.companyGrowthRate(allStocks, ticker, endYear - 2, endYear, "revenue");
+                    double stockGrowth = this.calculatorUtils.companyGrowthRate(allStocks, ticker, endYear - 2, endYear, "stock");
+                    Stocks startStocks = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear - 4));
+                    Stocks lastStocks = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, String.valueOf(endYear));
+                    double peg = 0;
+
+                    Stocks ttmStock = this.calculatorUtils.findStockByTickerAndYear(allStocks, ticker, "TTM");
+                    double pe = epsTTM == 0 ? 0 : ttmStock.getStock() / epsTTM;
+
+                    if (startStocks.getEps() != 0) {
+                        peg = this.calculatorUtils.cagrForCompanyNumerical(allStocks, startStocks, lastStocks, ticker);
+                    }
+
+                    // Validate and set values, replace invalid values with defaults
+                    screener.setRevenue_gr(Double.isFinite(revenueGrowth) ? revenueGrowth : 0);
+                    screener.setStock_gr(Double.isFinite(stockGrowth) ? stockGrowth : 0);
+                    screener.setPeg_ratio(Double.isFinite(peg) ? peg : 0);
+                    screener.setPe_ratio(Double.isFinite(pe) ? pe : 0);
+                }
+            }
+
+            List<Screener> existingEntity = screenerRepository.findByTicker(ticker);
+
+            if (!existingEntity.isEmpty()) {
+                Screener entityToUpdate = existingEntity.get(0);
+
+                entityToUpdate.setPrice(screener.getPrice());
+                entityToUpdate.setScore(screener.getScore());
+                entityToUpdate.setEps_ttm(screener.getEps_ttm());
+                entityToUpdate.setMarket_cap(screener.getMarket_cap());
+                entityToUpdate.setRevenue_gr(screener.getRevenue_gr());
+                entityToUpdate.setStock_gr(screener.getStock_gr());
+                entityToUpdate.setPeg_ratio(screener.getPeg_ratio());
+                entityToUpdate.setPe_ratio(screener.getPe_ratio());
+
+                screenerRepository.save(entityToUpdate);
+            } else {
+                screenerRepository.save(screener);
+            }
+        } catch (Exception e) {
+            System.out.println("ERROR (addScreener): " + e.getMessage());
+            e.printStackTrace(); // Log stack trace for debugging
+        }
+    }
+
+    public void getAllScreenerData() {
+        Mono<JsonNode> allTickers = getAllActiveTickers();
+        System.out.println("Get All Screener Data Started");
+        allTickers.subscribe(tickers -> {
+            if (tickers != null && tickers.has("tickers")) {
+                JsonNode tickerArray = tickers.path("tickers");
+                List<CompletableFuture<Void>> futures = new ArrayList<>();
+                int batchSize = 10;
+                int totalTickers = tickerArray.size();
+
+                Flux.range(0, totalTickers)
+                    .concatMap(i -> {
+                        String tickerName = tickerArray.get(i).path("ticker").asText();
+
+                        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                            addScreener(tickerName);
+                        });
+
+                        futures.add(future);
+
+                        if (futures.size() == batchSize || i == totalTickers - 1) {
+                            CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+                            allOf.join();
+                            futures.clear();
+                        }
+
+                        if (i % 500 == 0) {
+                            System.out.println("Screener Info Waiting: " + i / 500);
+                            return Mono.delay(Duration.ofSeconds(90)).then();
+                        }
+
+                        if( i == totalTickers - 1) {
+                            System.out.println("Get Stocks of All Tickers Completed");
+                        }
+                        return Mono.empty();
+                    })
+                    .then()
+                    .subscribe();
+            }
+        });
     }
 
     private Mono<JsonNode> fetchNewsWithCursor(String cursor) {
@@ -310,7 +475,6 @@ public class ScheduledService {
         });
     }
 
-
     public void getAllTickersFinancialInfo() {
         Mono<JsonNode> allTickers = getAllActiveTickers();
         System.out.println("Get Financial of All Tickers Started");
@@ -362,15 +526,16 @@ public class ScheduledService {
         Runnable dailyTaskForTickers = () -> CompletableFuture.runAsync(this::getAllTickers);
         Runnable dailyTaskForStockInfo = () ->CompletableFuture.runAsync(this::getAllTickersStock);
         Runnable dailyTaskForFinancialInfo = () ->CompletableFuture.runAsync(this::getAllTickersFinancialInfo);
+        Runnable dailyTaskForScreenerInfo = () ->CompletableFuture.runAsync(this::getAllScreenerData);
         Runnable hourlyTaskforTTMStockInfo = () ->CompletableFuture.runAsync(this::getAllTickersTTMStock);
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 60 * 60, period, TimeUnit.SECONDS );
-        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
-        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 300 * 60, period, TimeUnit.SECONDS);
-        scheduler.scheduleAtFixedRate(hourlyTaskforTTMStockInfo, 20 * 60, 150 * 60, TimeUnit.SECONDS);
-
+        scheduler.scheduleAtFixedRate(dailyTaskForScreenerInfo,5 * 60, period, TimeUnit.SECONDS);
+//        schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 60 * 60, period, TimeUnit.SECONDS );
+//        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
+//        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 300 * 60, period, TimeUnit.SECONDS);
+//        scheduler.scheduleAtFixedRate(hourlyTaskforTTMStockInfo, 20 * 60, 150 * 60, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Shutting down executors...");
