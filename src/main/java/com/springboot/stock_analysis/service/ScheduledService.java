@@ -254,7 +254,7 @@ public class ScheduledService {
 
                         if (i % 500 == 0) {
                             System.out.println("Screener Info Waiting: " + i / 500);
-                            return Mono.delay(Duration.ofSeconds(90)).then();
+                            return Mono.delay(Duration.ofSeconds(60)).then();
                         }
 
                         if( i == totalTickers - 1) {
@@ -531,11 +531,11 @@ public class ScheduledService {
         long period = 24 * 60 * 60; // 24 hours in seconds
 
         // Schedule the task to run daily
-        scheduler.scheduleAtFixedRate(dailyTaskForScreenerInfo,5 * 60, period, TimeUnit.SECONDS);
-//        schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 60 * 60, period, TimeUnit.SECONDS );
-//        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 120 * 60, period, TimeUnit.SECONDS);
-//        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 300 * 60, period, TimeUnit.SECONDS);
-//        scheduler.scheduleAtFixedRate(hourlyTaskforTTMStockInfo, 20 * 60, 150 * 60, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(hourlyTaskforTTMStockInfo, 20 * 60, 150 * 60, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForScreenerInfo,60 * 60, period, TimeUnit.SECONDS);
+        schedulerForAllTickers.scheduleAtFixedRate(dailyTaskForTickers, 120 * 60, period, TimeUnit.SECONDS );
+        scheduler.scheduleAtFixedRate(dailyTaskForStockInfo, 150 * 60, period, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(dailyTaskForFinancialInfo, 300 * 60, period, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Shutting down executors...");
