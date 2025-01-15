@@ -87,4 +87,18 @@ public class PolygonController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
+
+    @PostMapping("/screener")
+    public ResponseEntity<?> screener(@RequestParam("marketCap") String marketCap,
+                                      @RequestParam("revenueGR") String revenueGR,
+                                      @RequestParam("epsTTM") String epsTTM,
+                                      @RequestParam("pegRatio") String pegRatio,
+                                      @RequestParam("stockGR") String stockGR,
+                                      @RequestParam("peRatio") String peRatio) {
+        try {
+            return ResponseEntity.ok(this.polygonApiService.getScreenerData(marketCap, revenueGR, epsTTM, pegRatio, stockGR, peRatio));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
 }

@@ -9,15 +9,12 @@ import com.springboot.stock_analysis.dto.PerformanceDTO;
 import com.springboot.stock_analysis.dto.RatedStockDTO;
 import com.springboot.stock_analysis.model.Stocks;
 import com.springboot.stock_analysis.model.Tickers;
+import com.springboot.stock_analysis.model.Screener;
 import com.springboot.stock_analysis.repository.StocksRepository;
 import com.springboot.stock_analysis.repository.TickersRepository;
+import com.springboot.stock_analysis.repository.ScreenerRepository;
 import com.springboot.stock_analysis.utils.CalculatorUtils;
-import io.netty.handler.ssl.PemX509Certificate;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -26,6 +23,11 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.*;
 import java.util.*;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.*;
+
 
 @Service
 public class PolygonApiService {
@@ -40,12 +42,17 @@ public class PolygonApiService {
     private final Map<String, List<Stocks>> allStocks = new HashMap<>();
     private final TickersRepository tickersRepository;
     private final CalculatorUtils calculatorUtils;
-    public PolygonApiService(WebClient webClient, StocksRepository stocksRepository, TickersRepository tickersRepository, CalculatorUtils calculatorUtils) throws JsonProcessingException {
+    private final ScreenerRepository screenerRepository;
+    private final EntityManager entityManager;
+
+    public PolygonApiService(WebClient webClient, StocksRepository stocksRepository, TickersRepository tickersRepository, CalculatorUtils calculatorUtils, ScreenerRepository screenerRepository, EntityManager entityManager) throws JsonProcessingException {
         this.webClient = webClient;
         this.calculatorUtils = calculatorUtils;
         this.stocksRepository = stocksRepository;
         List<String> stockList = this.stocksRepository.findGroupedStocks();
         this.tickersRepository = tickersRepository;
+        this.screenerRepository = screenerRepository;
+        this.entityManager = entityManager;
         for(String stock: stockList) {
             String jsonString = "[" + stock + "]";
             ObjectMapper objectMapper = new ObjectMapper();
@@ -485,5 +492,136 @@ public class PolygonApiService {
 
     public List<Tickers> getTickerList(String ticker) {
         return this.tickersRepository.findByShortNameAndFullName(ticker);
+    }
+
+    public List<Screener> getScreenerData(String marketCap, String revenueGR, String epsTTM, String pegRatio, String stockGR, String peRatio) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Screener> cq = cb.createQuery(Screener.class);
+        Root<Screener> screenerRoot = cq.from(Screener.class);
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (marketCap != "Any") {
+            switch (marketCap.toLowerCase()) {
+                case "mega":
+                    predicates.add(cb.greaterThan(screenerRoot.get("market_cap"), 200)); // Example threshold
+                    break;
+                case "large":
+                    predicates.add(cb.between(screenerRoot.get("market_cap"), 10, 200));
+                    break;
+                case "mid":
+                    predicates.add(cb.between(screenerRoot.get("market_cap"), 2, 10));
+                    break;
+                case "small":
+                    predicates.add(cb.between(screenerRoot.get("market_cap"), 0.3, 2.0));
+                    break;
+                case "micro":
+                    predicates.add(cb.lessThan(screenerRoot.get("market_cap"), 0.3));
+                    break;
+            }
+        }
+
+        if (revenueGR != "Any") {
+            switch (revenueGR.toLowerCase()) {
+                case "high":
+                    predicates.add(cb.greaterThan(screenerRoot.get("revenue_gr"), 25));
+                    break;
+                case "average":
+                    predicates.add(cb.between(screenerRoot.get("revenue_gr"), 10, 25));
+                    break;
+                case "low":
+                    predicates.add(cb.between(screenerRoot.get("revenue_gr"), 0, 10));
+                    break;
+                case "positive":
+                    predicates.add(cb.greaterThan(screenerRoot.get("revenue_gr"), 0));
+                    break;
+                case "negative":
+                    predicates.add(cb.lessThan(screenerRoot.get("revenue_gr"), 0));
+                    break;
+            }
+        }
+
+        if (epsTTM != "Any") {
+            switch (epsTTM.toLowerCase()) {
+                case "high":
+                    predicates.add(cb.greaterThan(screenerRoot.get("eps_ttm"), 10));
+                    break;
+                case "average":
+                    predicates.add(cb.between(screenerRoot.get("eps_ttm"), 3, 10));
+                    break;
+                case "low":
+                    predicates.add(cb.between(screenerRoot.get("eps_ttm"), 0, 3));
+                    break;
+                case "positive":
+                    predicates.add(cb.greaterThan(screenerRoot.get("eps_ttm"), 0));
+                    break;
+                case "negative":
+                    predicates.add(cb.lessThan(screenerRoot.get("eps_ttm"), 0));
+                    break;
+            }
+        }
+
+        if (pegRatio != "Any") {
+            switch (pegRatio.toLowerCase()) {
+                case "very high":
+                    predicates.add(cb.greaterThan(screenerRoot.get("peg_ratio"), 5));
+                    break;
+                case "high":
+                    predicates.add(cb.between(screenerRoot.get("peg_ratio"), 3, 5));
+                    break;
+                case "average":
+                    predicates.add(cb.between(screenerRoot.get("peg_ratio"), 2, 3));
+                    break;
+                case "low":
+                    predicates.add(cb.between(screenerRoot.get("peg_ratio"), 1, 2));
+                    break;
+                case "very low":
+                    predicates.add(cb.between(screenerRoot.get("peg_ratio"), 0, 1));
+                    break;
+            }
+        }
+
+        if (stockGR != "Any") {
+            switch (stockGR.toLowerCase()) {
+                case "high":
+                    predicates.add(cb.greaterThan(screenerRoot.get("stock_gr"), 25));
+                    break;
+                case "average":
+                    predicates.add(cb.between(screenerRoot.get("stock_gr"), 10, 25));
+                    break;
+                case "low":
+                    predicates.add(cb.between(screenerRoot.get("stock_gr"), 0, 10));
+                    break;
+                case "positive":
+                    predicates.add(cb.greaterThan(screenerRoot.get("stock_gr"), 0));
+                    break;
+                case "negative":
+                    predicates.add(cb.lessThan(screenerRoot.get("stock_gr"), 0));
+                    break;
+            }
+        }
+
+        if (peRatio != "Any") {
+            switch (peRatio.toLowerCase()) {
+                case "very high":
+                    predicates.add(cb.greaterThan(screenerRoot.get("pe_ratio"), 40));
+                    break;
+                case "high":
+                    predicates.add(cb.between(screenerRoot.get("pe_ratio"), 20, 40));
+                    break;
+                case "average":
+                    predicates.add(cb.between(screenerRoot.get("pe_ratio"), 12, 20));
+                    break;
+                case "low":
+                    predicates.add(cb.between(screenerRoot.get("pe_ratio"), 10, 12));
+                    break;
+                case "very low":
+                    predicates.add(cb.between(screenerRoot.get("pe_ratio"), 0, 10));
+                    break;
+            }
+        }
+
+        cq.where(predicates.toArray(new Predicate[0]));
+        TypedQuery<Screener> query = entityManager.createQuery(cq);
+        return query.getResultList();
     }
 }
