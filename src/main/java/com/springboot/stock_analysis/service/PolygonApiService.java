@@ -535,7 +535,7 @@ public class PolygonApiService {
                     predicates.add(cb.greaterThan(screenerRoot.get("revenue_gr"), 0));
                     break;
                 case "negative":
-                    predicates.add(cb.lessThan(screenerRoot.get("revenue_gr"), 0));
+                    predicates.add(cb.between(screenerRoot.get("revenue_gr"), -99, 0));
                     break;
             }
         }
